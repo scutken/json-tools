@@ -746,6 +746,7 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     const chars = model?.getValueLength() ?? 0;
     const lines = model?.getLineCount() ?? 0;
     let selectedChars = 0;
+
     if (selection && !selection.isEmpty()) {
       selectedChars = model?.getValueLengthInRange(selection) ?? 0;
     }
@@ -1663,39 +1664,39 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
         // 监听内容变化
         disposableStore.current.add(
           editor.onDidChangeModelContent(() => {
-          const val = editor.getValue();
-          const model = editorRef.current?.getModel();
-          const languageId = model?.getLanguageId();
-          const workload = getEditorWorkload(model);
+            const val = editor.getValue();
+            const model = editorRef.current?.getModel();
+            const languageId = model?.getLanguageId();
+            const workload = getEditorWorkload(model);
 
-          if (languageId === "json" || languageId === "json5") {
-            if (parseJsonErrorTimeoutRef.current) {
-              clearTimeout(parseJsonErrorTimeoutRef.current);
-            }
-            // 自动验证 JSON 内容
-            parseJsonErrorTimeoutRef.current = setTimeout(() => {
-              editorValueValidate(val);
-            }, getValidationDelay(workload));
-
-            // 根据行数控制装饰器
-            const lineCount = getEditorLineCount();
-
-            if (lineCount < 3 || !shouldRunInlineDecorations(workload)) {
-              // 小于3行时，清空所有装饰器
-              clearAllDecorators();
-            } else {
-              if (timestampDecorationsRef.current) {
-                timestampDecorationsRef.current.clear();
+            if (languageId === "json" || languageId === "json5") {
+              if (parseJsonErrorTimeoutRef.current) {
+                clearTimeout(parseJsonErrorTimeoutRef.current);
               }
-              clearTimestampCache(timestampDecoratorState);
-              scheduleInlineDecorationRefresh();
+              // 自动验证 JSON 内容
+              parseJsonErrorTimeoutRef.current = setTimeout(() => {
+                editorValueValidate(val);
+              }, getValidationDelay(workload));
+
+              // 根据行数控制装饰器
+              const lineCount = getEditorLineCount();
+
+              if (lineCount < 3 || !shouldRunInlineDecorations(workload)) {
+                // 小于3行时，清空所有装饰器
+                clearAllDecorators();
+              } else {
+                if (timestampDecorationsRef.current) {
+                  timestampDecorationsRef.current.clear();
+                }
+                clearTimestampCache(timestampDecoratorState);
+                scheduleInlineDecorationRefresh();
+              }
             }
-          }
-          lastLocalEditTimeRef.current = Date.now();
-          onUpdateValue(val);
-          setCurrentEditorValue(val);
-          updateEditorStats();
-        }),
+            lastLocalEditTimeRef.current = Date.now();
+            onUpdateValue(val);
+            setCurrentEditorValue(val);
+            updateEditorStats();
+          }),
         );
 
         // 监听选区变化，更新选中字符数
@@ -1708,31 +1709,32 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
         // 添加粘贴事件监听：首次粘贴时自动格式化
         disposableStore.current.add(
           editor.onDidPaste(() => {
-          if (isFirstPasteRef.current && editorRef.current) {
-            const currentValue = editorRef.current.getValue();
+            if (isFirstPasteRef.current && editorRef.current) {
+              const currentValue = editorRef.current.getValue();
 
-            // 检查是否为首次粘贴（编辑器为空或只有空白字符）
-            if (currentValue && currentValue.trim() !== "") {
-              // 延迟执行，等待内容完全粘贴并格式化
-              const timeoutId = setTimeout(() => {
-                if (editorRef.current && isFirstPasteRef.current) {
-                  // 尝试验证并格式化
-                  const val = editorRef.current.getValue();
-                  const isValid = editorValueValidate(val);
+              // 检查是否为首次粘贴（编辑器为空或只有空白字符）
+              if (currentValue && currentValue.trim() !== "") {
+                // 延迟执行，等待内容完全粘贴并格式化
+                const timeoutId = setTimeout(() => {
+                  if (editorRef.current && isFirstPasteRef.current) {
+                    // 尝试验证并格式化
+                    const val = editorRef.current.getValue();
+                    const isValid = editorValueValidate(val);
 
-                  if (isValid) {
-                    // 验证成功后进行格式化
-                    editorFormat();
-                    // 设置为非首次粘贴状态，避免重复格式化
-                    isFirstPasteRef.current = false;
+                    if (isValid) {
+                      // 验证成功后进行格式化
+                      editorFormat();
+                      // 设置为非首次粘贴状态，避免重复格式化
+                      isFirstPasteRef.current = false;
+                    }
                   }
-                }
-              }, 100);
-              // 注册 timeout 到 store，确保清理时不会遗漏
-              disposableStore.current.addTimeout(timeoutId);
+                }, 100);
+
+                // 注册 timeout 到 store，确保清理时不会遗漏
+                disposableStore.current.addTimeout(timeoutId);
+              }
             }
-          }
-        }),
+          }),
         );
 
         editorRef.current = editor;
@@ -1871,11 +1873,12 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
       // 脏标记守卫：如果用户最近编辑过（500ms 内），跳过外部更新
       // 防止防抖期间 store 中的旧值覆盖编辑器最新内容
       const timeSinceLastEdit = Date.now() - lastLocalEditTimeRef.current;
+
       if (timeSinceLastEdit < 500) {
         return;
       }
 
-      console.log('[MonacoJsonEditor] 外部 value 变化，更新编辑器内容', {
+      console.log("[MonacoJsonEditor] 外部 value 变化，更新编辑器内容", {
         tabKey,
         oldValueLength: currentValue?.length,
         newValueLength: value?.length,
@@ -1883,6 +1886,7 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
 
       // 使用 executeEdits 保留撤销历史
       const model = editorRef.current.getModel();
+
       if (model) {
         editorRef.current.executeEdits("external-update", [
           {
@@ -1975,23 +1979,25 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
         quickPrompts={finalQuickPrompts}
         onClose={() => setShowAiPrompt(false)}
         onPromptChange={setAiPrompt}
-        onSubmit={handleAiSubmit}
         onQuickPromptClick={(qp) => {
           if (qp.id === "convert_to_snake_case") {
             try {
               const editorValue = editorRef.current?.getValue() || "";
               const converted = convertKeysToSnakeCase(editorValue);
+
               editorRef.current?.setValue(converted);
               setShowAiPrompt(false);
               toast.success("已将所有字段名转换为 snake_case");
             } catch {
               toast.error("转换失败，请检查 JSON 格式是否正确");
             }
+
             return;
           }
           // 其他按钮走默认行为：填充 AI 提示
           setAiPrompt(qp.prompt);
         }}
+        onSubmit={handleAiSubmit}
       />
 
       <div

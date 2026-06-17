@@ -621,6 +621,7 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
 
     if (!result.success) {
       setBase64Error(result.error || "解码失败");
+
       return;
     }
 
@@ -629,6 +630,7 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
 
     try {
       const parsed = parseJson(content);
+
       content = stringifyJson(parsed, 2);
       title = "Base64 JSON";
     } catch {
@@ -638,7 +640,9 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
     addTab(title, content);
     setShowAddMenu(false);
     setBase64Input("");
-    toast.success(title === "Base64 JSON" ? "Base64 JSON 解码成功" : "Base64 文本解码成功");
+    toast.success(
+      title === "Base64 JSON" ? "Base64 JSON 解码成功" : "Base64 文本解码成功",
+    );
   };
 
   // 刷新URL数据
@@ -1227,11 +1231,12 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
                   <div className="relative">
                     <Textarea
                       classNames={{
-                        inputWrapper: "shadow-sm bg-default-100 border-divider pb-8",
+                        inputWrapper:
+                          "shadow-sm bg-default-100 border-divider pb-8",
                         input: "focus:ring-0 text-xs",
                       }}
-                      minRows={2}
                       maxRows={6}
+                      minRows={2}
                       placeholder="粘贴 Base64 编码字符串 (Ctrl+Enter)"
                       value={base64Input}
                       variant="flat"
