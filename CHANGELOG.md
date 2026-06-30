@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/fevrax/json-tools/compare/v1.26.0...v1.27.0) (2026-06-30)
+
+
+### Features
+
+* build docker images ([2773243](https://github.com/fevrax/json-tools/commit/27732435f91ec7acfbc90618457ee9ec51b7eff1))
+
 # [1.26.0](https://github.com/fevrax/json-tools/compare/v1.25.0...v1.26.0) (2026-06-18)
 
 
