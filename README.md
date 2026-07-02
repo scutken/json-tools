@@ -7,6 +7,8 @@
   
 </div>
 
+> 本项目 fork 自 [fevrax/json-tools](https://github.com/fevrax/json-tools)，在原项目基础上做了大量样式与交互调整。
+
 ## ✨ 特性
 
 合社JSON 是一个多功能的JSON工具集，提供了直观的界面和多种强大功能，帮助开发者处理和转换JSON数据。
@@ -188,7 +190,7 @@ BREAKING CHANGE: 修改了之前的格式化行为
 
 
 ## 📈 Stargazers over time
-[![Stargazers over time](https://starchart.cc/fevrax/json-tools.svg?variant=adaptive)](https://starchart.cc/fevrax/json-tools)
+[![Stargazers over time](https://starchart.cc/scutken/json-tools.svg?variant=adaptive)](https://starchart.cc/scutken/json-tools)
 
 ## 🙏 致谢
 
