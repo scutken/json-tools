@@ -195,6 +195,8 @@ export const useTabStore = create<TabStore>()(
             return {
               ...state,
               tabs,
+              activeTabKey: "1",
+              nextKey: 2,
             };
           });
         },
@@ -409,12 +411,18 @@ export const useTabStore = create<TabStore>()(
           const data: Record<string, any> = {};
 
           if (tabs) {
-            data.tabs = tabs.map(normalizePersistedTab);
+            const normalizedTabs = tabs.map(normalizePersistedTab);
+
+            data.tabs = normalizedTabs;
+
+            if (activeTabKey && normalizedTabs.some((tab) => tab.key === activeTabKey)) {
+              data.activeTabKey = activeTabKey;
+            } else if (normalizedTabs.length > 0) {
+              data.activeTabKey = normalizedTabs[0].key;
+            }
           } else {
             get().initTab();
-          }
-          if (activeTabKey) {
-            data.activeTabKey = activeTabKey;
+            return;
           }
           if (nextKey) {
             data.nextKey = nextKey;

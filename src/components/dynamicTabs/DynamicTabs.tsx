@@ -84,10 +84,9 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
   }>({ left: 0, top: 0, width: 0 });
 
   const addButtonRef = useRef<HTMLDivElement>(null);
+  const actionButtonRef = useRef<HTMLDivElement>(null);
 
   // 点击检测相关状态
-  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastClickTimeRef = useRef<number>(0);
 
   // 添加确认弹窗相关状态
   const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
@@ -345,34 +344,11 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
     });
   };
 
-  // 处理添加按钮的智能点击（区分单击和双击）
+  // 处理添加按钮点击：单击直接创建空白 Tab
   const handleAddButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    const now = Date.now();
-    const timeSinceLastClick = now - lastClickTimeRef.current;
-
-    // 清除之前的定时器
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-    }
-
-    // 如果两次点击间隔小于300ms，认为是双击
-    if (timeSinceLastClick < 300) {
-      // 双击 - 创建空白tab
-      addTab(undefined, undefined);
-      lastClickTimeRef.current = 0;
-    } else {
-      // 单击 - 延迟执行菜单显示，等待可能的双击
-      clickTimeoutRef.current = setTimeout(() => {
-        toggleAddMenu();
-        clickTimeoutRef.current = null;
-      }, 300);
-    }
-
-    lastClickTimeRef.current = now;
+    addTab(undefined, undefined);
   };
 
   const handleContextMenu = (
@@ -883,6 +859,10 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
         return;
       }
 
+      if ((event.target as Element).closest('[aria-label="打开当前页面功能"]')) {
+        return;
+      }
+
       if (
         contextMenuPosition &&
         !(event.target as Element).closest(".tab-context-menu")
@@ -906,10 +886,6 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
   // 清理定时器和动画
   useEffect(() => {
     return () => {
-      // 清理点击定时器
-      if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
-      }
       // 清理滚动动画
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
@@ -999,8 +975,8 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
 
   // 修改添加菜单显示逻辑
   const toggleAddMenu = () => {
-    if (addButtonRef.current) {
-      const buttonRect = addButtonRef.current.getBoundingClientRect();
+    if (actionButtonRef.current) {
+      const buttonRect = actionButtonRef.current.getBoundingClientRect();
       const menuMaxWidth = Math.min(520, window.innerWidth - 32);
       let x = buttonRect.left - 8;
 
@@ -1028,8 +1004,8 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
   // 确保在组件挂载后和窗口大小变化时更新菜单位置
   useEffect(() => {
     const updateAddMenuPosition = () => {
-      if (addButtonRef.current) {
-        const buttonRect = addButtonRef.current.getBoundingClientRect();
+      if (actionButtonRef.current) {
+        const buttonRect = actionButtonRef.current.getBoundingClientRect();
         const menuMaxWidth = Math.min(520, window.innerWidth - 32);
         let x = buttonRect.left - 10;
 
@@ -1415,7 +1391,7 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden border-b border-default-200 pb-0.5 relative",
+        "flex flex-col overflow-hidden relative",
         {
           "bg-default-100": !isDragging,
           "bg-primary-50/40 dark:bg-primary-900/20": isDragging,
@@ -1427,14 +1403,38 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
       onDrop={handleFileDrop}
     >
       <div className="flex items-center relative">
-        <div className="sticky left-0 z-10 h-full flex items-center pr-1 shadow-[4px_0_8px_-1px_rgba(0,0,0,0.05)] dark:shadow-[4px_0_8px_-1px_rgba(0,0,0,0.2)]">
+        <div className="sticky left-0 z-10 h-full flex items-center gap-1 pr-1 shadow-[4px_0_8px_-1px_rgba(0,0,0,0.05)] dark:shadow-[4px_0_8px_-1px_rgba(0,0,0,0.2)]">
           <div
             ref={addButtonRef}
             aria-label="添加新标签页"
-            className="sticky left-0 z-50 cursor-pointer p-1.5 ml-1.5 flex-shrink-0 bg-default-100 hover:bg-default-200 rounded-lg text-default-600 transition-colors"
+            className="sticky left-0 z-50 cursor-pointer p-1 ml-1 flex-shrink-0 bg-default-100 hover:bg-default-200 rounded-md text-default-600 transition-colors"
             role="button"
             tabIndex={0}
             onClick={handleAddButtonClick}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              addTab(undefined, undefined);
+            }}
+            onKeyDown={(e) =>
+              handleKeyDown(e, () => {
+                addTab(undefined, undefined);
+              })
+            }
+          >
+            <Icon icon="solar:add-square-linear" width={fontSizeConfig.icon} />
+          </div>
+          <div
+            ref={actionButtonRef}
+            aria-label="打开当前页面功能"
+            className="z-50 cursor-pointer p-1 flex-shrink-0 bg-default-100 hover:bg-default-200 rounded-md text-default-600 transition-colors"
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleAddMenu();
+            }}
             onContextMenu={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -1446,13 +1446,13 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
               })
             }
           >
-            <Icon icon="solar:add-square-linear" width={fontSizeConfig.icon} />
+            <Icon icon="solar:menu-dots-square-linear" width={fontSizeConfig.icon} />
           </div>
         </div>
 
         <div
           ref={tabContainerRef}
-          className="flex-grow h-10 overflow-x-auto scrollbar-hide"
+          className="flex-grow h-8 overflow-x-auto scrollbar-hide"
           style={{
             scrollBehavior: "auto",
             willChange: "scroll-position",
@@ -1467,8 +1467,8 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
             ref={tabListRef}
             aria-label="标签页"
             classNames={{
-              tabList: `gap-1 w-full h-10 relative rounded-none p-0 pr-4 ml-2 overflow-x-visible flex-shrink-0`,
-              tab: `max-w-fit px-1.5 h-10 flex-shrink-0 data-[hover=true]:bg-default-100 rounded-t-md transition-colors font-size-tab after:content-[''] after:absolute after:left-1.5 after:right-1.5 after:bottom-0 after:h-[2px] after:bg-foreground after:opacity-0 data-[selected=true]:after:opacity-100`,
+              tabList: `gap-1 w-full h-8 relative rounded-none p-0 pr-4 ml-1 overflow-x-visible flex-shrink-0`,
+              tab: `max-w-fit px-1.5 h-8 flex-shrink-0 data-[hover=true]:bg-default-100 rounded-t-md transition-colors font-size-tab after:content-[''] after:absolute after:left-1.5 after:right-1.5 after:bottom-0 after:h-[2px] after:bg-foreground after:opacity-0 data-[selected=true]:after:opacity-100`,
               cursor: "hidden",
               panel:
                 "flex-grow overflow-auto border-t border-divider px-0 pb-0 pt-1",
@@ -1498,7 +1498,7 @@ const DynamicTabs: React.FC<DynamicTabsProps> = ({
                     onDoubleClick={(e) => handleDoubleClick(tab, e)}
                   >
                     <>
-                      <span className="select-none text-sm max-w-[160px] truncate">
+                      <span className="select-none text-xs max-w-[150px] truncate">
                         {tab.title}
                       </span>
                       {tab.kind === "json" && tab.extraData?.url && (

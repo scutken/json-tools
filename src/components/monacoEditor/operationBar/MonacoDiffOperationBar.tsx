@@ -6,7 +6,6 @@ import {
   renderDropdownButton,
   renderMoreMenu,
   renderStandardButton,
-  useAdaptiveButtons,
 } from "@/components/monacoEditor/operationBar/OperationBarBase.tsx";
 import {
   useDropdownTimeout,
@@ -299,11 +298,10 @@ const MonacoDiffOperationBar: React.FC<MonacoDiffOperationBarProps> = ({
     },
   ];
 
-  // 使用通用的自适应按钮hook
-  const { visibleButtons, hiddenButtons } = useAdaptiveButtons(
-    containerRef,
-    actionGroups,
+  const visibleButtons = actionGroups.flatMap((group) =>
+    group.buttons.map((button) => button.key),
   );
+  const hiddenButtons: ButtonConfig[] = [];
 
   // 渲染按钮
   const renderButton = (button: ButtonConfig) => {
@@ -359,7 +357,7 @@ const MonacoDiffOperationBar: React.FC<MonacoDiffOperationBarProps> = ({
   return (
     <div
       ref={containerRef}
-      className="h-8 flex items-center gap-1 px-1.5 bg-gradient-to-r from-default-50 to-default-100 border-b border-default-200 shadow-sm"
+      className="h-7 min-w-0 flex items-center justify-end gap-1"
     >
       {/* 主要按钮组 */}
       <div className="flex items-center gap-1">

@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="public/logo.png" alt="JSON Tools Next" width="160" />
-  <h1>JSON Tools Next</h1>
+  <img src="public/logo.png" alt="合社JSON" width="160" />
+  <h1>合社JSON</h1>
   <p><strong>强大、灵活的JSON工具集，融合AI的现代化JSON数据处理解决方案</strong></p>
   
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![GitHub Stars](https://img.shields.io/github/stars/dalefengs/json-tools?style=social)](https://github.com/dalefengs/json-tools/stargazers) [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=white)](https://reactjs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/) [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/) [![Node](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
@@ -9,7 +9,7 @@
 
 ## ✨ 特性
 
-JSON Tools Next 是一个多功能的JSON工具集，提供了直观的界面和多种强大功能，帮助开发者处理和转换JSON数据。
+合社JSON 是一个多功能的JSON工具集，提供了直观的界面和多种强大功能，帮助开发者处理和转换JSON数据。
 
 - 🚀 **多视图模式**：支持文本视图、树形视图、差异对比视图和表格视图
 - 🎨 **深色/浅色主题**：适应各种工作环境和个人偏好 
@@ -56,11 +56,6 @@ JSON Tools Next 是一个多功能的JSON工具集，提供了直观的界面和
   </table>
 </div>
 
-## 🖼️ 界面预览
-
-![250419132143711.png](https://fs.ssooai.com/default/250419132143711-20250419132143726.png)
-![250419132241894.png](https://fs.ssooai.com/default/250419132241894-20250419132242640.png)
-![250419132405927.png](https://fs.ssooai.com/default/250419132405927-20250419132406260.png)
 ## 🔥 核心功能
 
 ### 多视图JSON编辑器
@@ -206,4 +201,4 @@ BREAKING CHANGE: 修改了之前的格式化行为
 
 ## 📜 许可证
 
-[MIT License](LICENSE) © 2025 json-tools
+[MIT License](LICENSE) © 2025 JSON Tools Next contributors. 合社JSON 保留原项目版权声明，并标注本分支修改。

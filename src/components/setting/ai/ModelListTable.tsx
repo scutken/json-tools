@@ -5,21 +5,15 @@ import toast from "@/utils/toast";
 
 interface ModelListTableProps {
   models: Array<{ value: string; label: string }>;
+  onAdd?: () => void;
   onRefresh: () => void;
-  onAdd: () => void;
   onRemove: (modelValue: string) => void;
 }
 
 /**
- * 模型列表表格（ssooai / custom 线路复用）。
- * 容器支持横向滚动，避免窄屏溢出。
+ * 模型列表表格。
  */
-export function ModelListTable({
-  models,
-  onRefresh,
-  onAdd,
-  onRemove,
-}: ModelListTableProps) {
+export function ModelListTable({ models, onAdd, onRefresh, onRemove }: ModelListTableProps) {
   return (
     <div className="mt-5 border-t border-default-200 pt-4">
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -28,16 +22,18 @@ export function ModelListTable({
           模型列表
         </h4>
         <div className="flex flex-wrap gap-2">
-          <Button
-            color="primary"
-            radius="full"
-            size="sm"
-            startContent={<Icon icon="solar:add-circle-bold" />}
-            variant="flat"
-            onPress={onAdd}
-          >
-            添加模型
-          </Button>
+          {onAdd ? (
+            <Button
+              isIconOnly
+              color="primary"
+              radius="full"
+              size="sm"
+              variant="flat"
+              onPress={onAdd}
+            >
+              <Icon icon="solar:add-circle-bold" width={18} />
+            </Button>
+          ) : null}
           <Button
             isIconOnly
             color="default"
@@ -57,7 +53,7 @@ export function ModelListTable({
       <div className="max-h-96 max-w-full overflow-auto rounded-lg border border-default-200 bg-background">
         {models.length === 0 ? (
           <div className="p-4 text-center text-sm text-default-500">
-            暂无模型，请刷新或检查API密钥
+            暂无模型，可手动添加或刷新模型列表
           </div>
         ) : (
           <div className="min-w-full overflow-x-auto">
@@ -83,12 +79,8 @@ export function ModelListTable({
                       index % 2 === 0 ? "bg-default-50/80" : "bg-default-100/20"
                     }`}
                   >
-                    <td className="max-w-[260px] truncate p-3">
-                      {item.value}
-                    </td>
-                    <td className="max-w-[260px] truncate p-3">
-                      {item.label}
-                    </td>
+                    <td className="max-w-[260px] truncate p-3">{item.value}</td>
+                    <td className="max-w-[260px] truncate p-3">{item.label}</td>
                     <td className="p-3 text-center">
                       <Button
                         isIconOnly

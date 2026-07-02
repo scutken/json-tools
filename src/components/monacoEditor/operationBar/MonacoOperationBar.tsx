@@ -10,10 +10,12 @@ import {
   renderDropdownButton,
   renderMoreMenu,
   renderStandardButton,
-  useAdaptiveButtons,
 } from "@/components/monacoEditor/operationBar/OperationBarBase.tsx";
 
-import { useDropdownTimeout, DEFAULT_DROPDOWN_TIMEOUT } from "@/components/monacoEditor/operationBar/useDropdownTimeout";
+import {
+  DEFAULT_DROPDOWN_TIMEOUT,
+  useDropdownTimeout,
+} from "@/components/monacoEditor/operationBar/useDropdownTimeout";
 
 import StatusButton from "@/components/button/StatusButton.tsx";
 import toast from "@/utils/toast.tsx";
@@ -29,6 +31,8 @@ interface MonacoOperationBarProps {
   onSaveFile: () => boolean;
   onAiClick?: () => void;
   onShowHistory?: () => void;
+  onToggleFilter?: () => void;
+  isFilterVisible?: boolean;
   ref?: React.RefObject<MonacoOperationBarRef> | null;
 }
 
@@ -45,14 +49,14 @@ const MonacoOperationBar: React.FC<MonacoOperationBarProps> = ({
   onMore,
   onAiClick,
   onShowHistory,
+  onToggleFilter,
+  isFilterVisible,
 }) => {
-  const [isSortDropdownOpen, setSortDropdownOpen] = useState(false);
-  const [isMoreDropdownOpen, setMoreDropdownOpen] = useState(false);
+  const [isFixedMoreDropdownOpen, setFixedMoreDropdownOpen] = useState(false);
+  const [isOverflowMoreDropdownOpen, setOverflowMoreDropdownOpen] =
+    useState(false);
   const [copyStatus, setCopyStatus] = useState<IconStatus>(IconStatus.Default);
   const [formatStatus, setFormatStatus] = useState<IconStatus>(
-    IconStatus.Default,
-  );
-  const [clearStatus, setClearStatus] = useState<IconStatus>(
     IconStatus.Default,
   );
 
@@ -61,34 +65,33 @@ const MonacoOperationBar: React.FC<MonacoOperationBarProps> = ({
   // 使用通用的下拉菜单超时管理hook
   const { createTimeout, clearTimeoutByKey } = useDropdownTimeout();
 
-  // 字段排序下拉菜单
-  const showSortDropdown = () => {
-    setSortDropdownOpen(true);
-  };
-  const unShowSortDropdown = () => {
-    createTimeout(
-      "sort",
-      () => setSortDropdownOpen(false),
-      DEFAULT_DROPDOWN_TIMEOUT,
-    );
-  };
-  const clearSortDropdownTimeout = (key: string) => {
-    clearTimeoutByKey(key);
-  };
-
   // 更多下拉菜单
   const showMoreDropdown = () => {
-    setMoreDropdownOpen(true);
+    setFixedMoreDropdownOpen(true);
   };
   const unShowMoreDropdown = () => {
     createTimeout(
       "more",
-      () => setMoreDropdownOpen(false),
+      () => setFixedMoreDropdownOpen(false),
       DEFAULT_DROPDOWN_TIMEOUT,
     );
   };
   const clearMoreDropdownTimeout = () => {
     clearTimeoutByKey("more");
+  };
+
+  const showOverflowMoreDropdown = () => {
+    setOverflowMoreDropdownOpen(true);
+  };
+  const unShowOverflowMoreDropdown = () => {
+    createTimeout(
+      "overflow-more",
+      () => setOverflowMoreDropdownOpen(false),
+      DEFAULT_DROPDOWN_TIMEOUT,
+    );
+  };
+  const clearOverflowMoreDropdownTimeout = () => {
+    clearTimeoutByKey("overflow-more");
   };
 
   const handleAction = (action: "unescape" | "del_comment" | "save_file") => {
@@ -112,7 +115,7 @@ const MonacoOperationBar: React.FC<MonacoOperationBarProps> = ({
         break;
     }
     // 执行操作后关闭更多菜单
-    setMoreDropdownOpen(false);
+    setFixedMoreDropdownOpen(false);
   };
 
   // 按钮组配置
@@ -167,53 +170,6 @@ const MonacoOperationBar: React.FC<MonacoOperationBarProps> = ({
             setFormatStatus(onFormat() ? IconStatus.Success : IconStatus.Error);
           },
         },
-        {
-          key: "sort",
-          icon: "fluent:arrow-sort-24-regular",
-          text: "字段排序",
-          tooltip: "",
-          hasDropdown: true,
-          priority: 40,
-          onClick: showSortDropdown,
-          dropdownItems: [
-            {
-              key: "asc",
-              icon: "mdi:sort-alphabetical-ascending",
-              text: "字段升序",
-              onClick: () => {
-                onFieldSort("asc");
-                toast.success("字段排序成功");
-                setSortDropdownOpen(false);
-              },
-            },
-            {
-              key: "desc",
-              icon: "mdi:sort-alphabetical-descending",
-              text: "字段降序",
-              onClick: () => {
-                onFieldSort("desc");
-                toast.success("字段排序成功");
-                setSortDropdownOpen(false);
-              },
-            },
-          ],
-        },
-        {
-          key: "clear",
-          isStatusButton: true,
-          icon: "mynaui:trash",
-          text: "清空",
-          tooltip: "",
-          status: clearStatus,
-          successText: "已清空",
-          priority: 50,
-          onClick: () => {
-            setTimeout(() => {
-              setClearStatus(IconStatus.Default);
-            }, 1000);
-            setClearStatus(onClear() ? IconStatus.Success : IconStatus.Error);
-          },
-        },
       ],
     },
     {
@@ -227,55 +183,102 @@ const MonacoOperationBar: React.FC<MonacoOperationBarProps> = ({
           onClick: onCompress,
           priority: 60,
         },
+        ...(onToggleFilter
+          ? [
+              {
+                key: "filter",
+                icon: "mdi:filter-outline",
+                text: "筛选",
+                tooltip: isFilterVisible ? "隐藏JsonQuery筛选" : "显示JsonQuery筛选",
+                onClick: onToggleFilter,
+                priority: 70,
+              },
+            ]
+          : []),
         {
-          key: "escape",
-          icon: "solar:link-round-line-duotone",
-          text: "转义",
-          tooltip: "转义当前JSON内容",
-          onClick: onEscape,
-          priority: 65,
-        },
-        {
-          key: "unescape",
-          icon: "iconoir:remove-link",
-          text: "删除转义",
-          tooltip: "删除JSON中的转义字符",
-          onClick: () => handleAction("unescape"),
-          priority: 70,
-        },
-        {
-          key: "del_comment",
-          icon: "tabler:notes-off",
-          text: "删除注释",
-          tooltip: "删除JSON中的注释",
-          onClick: () => handleAction("del_comment"),
-          priority: 70,
-        },
-        {
-          key: "save_file",
-          icon: "ic:round-save-alt",
-          text: "下载文件",
-          tooltip: "将当前内容保存为文件",
-          onClick: () => handleAction("save_file"),
-          priority: 80,
-        },
-        {
-          key: "history",
-          icon: "solar:history-linear",
-          text: "历史",
-          tooltip: "查看当前tab历史",
-          onClick: onShowHistory || (() => {}),
-          priority: 85,
+          key: "more",
+          icon: "mingcute:more-2-fill",
+          text: "更多",
+          tooltip: "更多操作",
+          hasDropdown: true,
+          priority: 90,
+          onClick: showMoreDropdown,
+          dropdownItems: [
+            {
+              key: "sort-asc",
+              icon: "mdi:sort-alphabetical-ascending",
+              text: "字段升序",
+              onClick: () => {
+                onFieldSort("asc");
+                toast.success("字段排序成功");
+                setFixedMoreDropdownOpen(false);
+              },
+            },
+            {
+              key: "sort-desc",
+              icon: "mdi:sort-alphabetical-descending",
+              text: "字段降序",
+              onClick: () => {
+                onFieldSort("desc");
+                toast.success("字段排序成功");
+                setFixedMoreDropdownOpen(false);
+              },
+            },
+            {
+              key: "clear",
+              icon: "mynaui:trash",
+              text: "清空",
+              onClick: () => {
+                onClear();
+                setFixedMoreDropdownOpen(false);
+              },
+            },
+            {
+              key: "escape",
+              icon: "solar:link-round-line-duotone",
+              text: "转义",
+              onClick: () => {
+                onEscape();
+                setFixedMoreDropdownOpen(false);
+              },
+            },
+            {
+              key: "unescape",
+              icon: "iconoir:remove-link",
+              text: "删除转义",
+              onClick: () => handleAction("unescape"),
+            },
+            {
+              key: "del_comment",
+              icon: "tabler:notes-off",
+              text: "删除注释",
+              onClick: () => handleAction("del_comment"),
+            },
+            {
+              key: "save_file",
+              icon: "ic:round-save-alt",
+              text: "下载文件",
+              onClick: () => handleAction("save_file"),
+            },
+            {
+              key: "history",
+              icon: "solar:history-linear",
+              text: "历史",
+              onClick: () => {
+                onShowHistory?.();
+                setFixedMoreDropdownOpen(false);
+              },
+            },
+          ],
         },
       ],
     },
   ];
 
-  // 使用通用的自适应按钮hook
-  const { visibleButtons, hiddenButtons } = useAdaptiveButtons(
-    containerRef,
-    actionGroups,
+  const visibleButtons = actionGroups.flatMap((group) =>
+    group.buttons.map((button) => button.key),
   );
+  const hiddenButtons: ButtonConfig[] = [];
 
   // 渲染按钮
   const renderButton = (button: ButtonConfig) => {
@@ -299,14 +302,14 @@ const MonacoOperationBar: React.FC<MonacoOperationBarProps> = ({
 
     // 带下拉菜单的按钮
     if ("hasDropdown" in button && button.hasDropdown) {
-      if (button.key === "sort") {
+      if (button.key === "more") {
         return renderDropdownButton(
           button,
-          isSortDropdownOpen,
-          setSortDropdownOpen,
-          showSortDropdown,
-          unShowSortDropdown,
-          clearSortDropdownTimeout
+          isFixedMoreDropdownOpen,
+          setFixedMoreDropdownOpen,
+          showMoreDropdown,
+          unShowMoreDropdown,
+          clearMoreDropdownTimeout,
         );
       }
     }
@@ -318,7 +321,7 @@ const MonacoOperationBar: React.FC<MonacoOperationBarProps> = ({
   return (
     <div
       ref={containerRef}
-      className="h-8 flex items-center gap-1 px-1.5 bg-gradient-to-r from-default-50 to-default-100 border-b border-default-200 shadow-sm"
+      className="h-7 min-w-0 flex items-center justify-end gap-1"
     >
       {/* AI 按钮 */}
       <div className="flex items-center gap-1">
@@ -350,11 +353,11 @@ const MonacoOperationBar: React.FC<MonacoOperationBarProps> = ({
         {/* 更多菜单 */}
         {renderMoreMenu(
           hiddenButtons,
-          isMoreDropdownOpen,
-          setMoreDropdownOpen,
-          showMoreDropdown,
-          unShowMoreDropdown,
-          clearMoreDropdownTimeout
+          isOverflowMoreDropdownOpen,
+          setOverflowMoreDropdownOpen,
+          showOverflowMoreDropdown,
+          unShowOverflowMoreDropdown,
+          clearOverflowMoreDropdownTimeout
         )}
       </div>
     </div>

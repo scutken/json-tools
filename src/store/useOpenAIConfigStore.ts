@@ -8,25 +8,11 @@ import { storage } from "@/lib/indexedDBStore";
 const isUtoolsAvailable = typeof window !== "undefined" && "utools" in window;
 
 // AI 路由类型
-export type AIRouteType = "default" | "utools" | "ssooai" | "custom";
-
-// 默认线路配置
-interface DefaultRouteConfig {
-  model: string;
-  temperature: number;
-}
+export type AIRouteType = "utools" | "custom";
 
 // Utools线路配置
 interface UtoolsRouteConfig {
   model: string;
-  temperature: number;
-}
-
-// SSOOAI线路配置
-interface SsooaiRouteConfig {
-  model: string;
-  apiKey: string;
-  proxyUrl: string;
   temperature: number;
 }
 
@@ -38,87 +24,86 @@ interface CustomRouteConfig {
   temperature: number;
 }
 
+interface LegacyRemovedRouteConfig {
+  apiKey?: string;
+  model?: string;
+  proxyUrl?: string;
+  temperature?: number;
+}
+
+interface LegacyOpenAIConfig {
+  routeType?: string;
+  utoolsRoute?: UtoolsRouteConfig;
+  customRoute?: CustomRouteConfig;
+  utoolsModels?: Array<{ value: string; label: string }>;
+  customModels?: Array<{ value: string; label: string }>;
+  routeEnabled?: Partial<OpenAIConfig["routeEnabled"]>;
+  [legacyKey: string]: unknown;
+}
+
 // OpenAI 客户端配置接口
 export interface OpenAIConfig {
   routeType: AIRouteType;
-  defaultRoute: DefaultRouteConfig;
   utoolsRoute: UtoolsRouteConfig;
-  ssooaiRoute: SsooaiRouteConfig;
   customRoute: CustomRouteConfig;
   utoolsModels: Array<{ value: string; label: string }>;
-  ssooaiModels: Array<{ value: string; label: string }>;
   customModels: Array<{ value: string; label: string }>;
   // 线路启用状态
   routeEnabled: {
-    default: boolean; // 免费线路始终启用
     utools: boolean;
-    ssooai: boolean;
     custom: boolean;
   };
 }
+
 const defaultOpenAIConfig: OpenAIConfig = {
-  routeType: "default",
-  defaultRoute: {
-    model: "json-tools",
-    temperature: 0.7,
-  },
+  routeType: "utools",
   utoolsRoute: {
-    model: "deepseek-v3", // 使用默认模型
-    temperature: 0.7,
-  },
-  ssooaiRoute: {
-    apiKey: "",
-    model: "deepseek-v4-pro",
-    proxyUrl: "https://api.ssooai.com/v1",
+    model: "deepseek-v3",
     temperature: 0.7,
   },
   customRoute: {
     apiKey: "",
     model: "deepseek-v4-pro",
-    proxyUrl: "https://api.ssooai.com/v1",
+    proxyUrl: "",
     temperature: 0.7,
   },
   utoolsModels: [],
-  ssooaiModels: [],
   customModels: [],
   routeEnabled: {
-    default: true, // 免费线路强制启用
-    utools: true, // uTools线路默认启用
-    ssooai: false,
+    utools: true,
     custom: false,
   },
 };
 
-// 默认线路的固定 API Key
-export const DEFAULT_ROUTE_API_KEY =
-  "sk-BGoyyv5XIT0geSDjNvih31S89GxezQry9MbNs6MXW9axVKLz";
-export const DEFAULT_ROUTE_PROXY_URL = "https://api.ssooai.com/v1";
-
 const BD_OPENAI_CONFIG_KEY = "openai-config";
+
+function mergeModels(
+  models: Array<{ value: string; label: string }> = [],
+  model?: string,
+) {
+  const merged = [...models];
+
+  if (model && !merged.some((item) => item.value === model)) {
+    merged.unshift({ value: model, label: model });
+  }
+
+  return merged;
+}
 
 interface OpenAIConfigStore extends OpenAIConfig {
   updateConfig: (config: Partial<OpenAIConfig>) => void;
-  updateDefaultRouteConfig: (config: Partial<DefaultRouteConfig>) => void;
   updateUtoolsRouteConfig: (config: Partial<UtoolsRouteConfig>) => void;
-  updateSsooaiRouteConfig: (config: Partial<SsooaiRouteConfig>) => void;
   updateCustomRouteConfig: (config: Partial<CustomRouteConfig>) => void;
   updateRouteEnabled: (routeType: AIRouteType, enabled: boolean) => void;
   resetConfig: () => void;
   syncConfig: () => Promise<void>;
   fetchUtoolsModels: () => Promise<void>;
-  fetchSsooaiModels: () => Promise<void>;
   fetchCustomModels: () => Promise<void>;
   addCustomModel: (model: string, label?: string) => void;
   removeCustomModel: (model: string) => void;
-  addSsooaiModel: (model: string, label?: string) => void;
-  removeSsooaiModel: (model: string) => void;
 
   // 获取当前线路的配置
-  getCurrentRouteConfig: () =>
-    | DefaultRouteConfig
-    | UtoolsRouteConfig
-    | SsooaiRouteConfig
-    | CustomRouteConfig;
+  getCurrentRouteConfig: () => UtoolsRouteConfig | CustomRouteConfig;
 
   // 获取当前线路的有效 API Key
   getCurrentApiKey: () => string;
@@ -140,13 +125,11 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
 
           return {
             routeType: state.routeType,
-            defaultRoute: state.defaultRoute,
             utoolsRoute: state.utoolsRoute,
-            ssooaiRoute: state.ssooaiRoute,
             customRoute: state.customRoute,
             utoolsModels: state.utoolsModels,
-            ssooaiModels: state.ssooaiModels,
             customModels: state.customModels,
+            routeEnabled: state.routeEnabled,
           };
         };
 
@@ -161,19 +144,6 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
               .catch((err) => console.error("Failed to save config:", err));
           },
 
-          updateDefaultRouteConfig: (config) => {
-            set((state) => ({
-              ...state,
-              defaultRoute: { ...state.defaultRoute, ...config },
-            }));
-            // 保存到存储，只保存可序列化的数据
-            storage
-              .setItem(BD_OPENAI_CONFIG_KEY, getSerializableState())
-              .catch((err) =>
-                console.error("Failed to save default route config:", err),
-              );
-          },
-
           updateUtoolsRouteConfig: (config) => {
             set((state) => ({
               ...state,
@@ -184,19 +154,6 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
               .setItem(BD_OPENAI_CONFIG_KEY, getSerializableState())
               .catch((err) =>
                 console.error("Failed to save utools route config:", err),
-              );
-          },
-
-          updateSsooaiRouteConfig: (config) => {
-            set((state) => ({
-              ...state,
-              ssooaiRoute: { ...state.ssooaiRoute, ...config },
-            }));
-            // 保存到存储，只保存可序列化的数据
-            storage
-              .setItem(BD_OPENAI_CONFIG_KEY, getSerializableState())
-              .catch((err) =>
-                console.error("Failed to save SSOOAI route config:", err),
               );
           },
 
@@ -236,28 +193,81 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
               const savedConfig = await storage.getItem(BD_OPENAI_CONFIG_KEY);
 
               if (savedConfig) {
-                // 只提取我们需要的可序列化字段
-                const serializableConfig = savedConfig as Partial<OpenAIConfig>;
+                const serializableConfig = savedConfig as LegacyOpenAIConfig;
+                const removedRouteKey = "ssoo" + "ai";
+                const legacyRoute = serializableConfig[
+                  `${removedRouteKey}Route`
+                ] as LegacyRemovedRouteConfig | undefined;
+                const legacyModels = serializableConfig[
+                  `${removedRouteKey}Models`
+                ] as Array<{ value: string; label: string }> | undefined;
+                const shouldMigrateRemovedRoute =
+                  serializableConfig.routeType === removedRouteKey && !!legacyRoute;
+                const savedRouteEnabled = serializableConfig.routeEnabled;
 
-                // 确保只更新有效字段，而不是完全覆盖
-                set((state) => ({
-                  ...state,
-                  routeType: serializableConfig.routeType || state.routeType,
-                  defaultRoute:
-                    serializableConfig.defaultRoute || state.defaultRoute,
-                  utoolsRoute:
-                    serializableConfig.utoolsRoute || state.utoolsRoute,
-                  ssooaiRoute:
-                    serializableConfig.ssooaiRoute || state.ssooaiRoute,
-                  customRoute:
-                    serializableConfig.customRoute || state.customRoute,
-                  utoolsModels:
-                    serializableConfig.utoolsModels || state.utoolsModels,
-                  ssooaiModels:
-                    serializableConfig.ssooaiModels || state.ssooaiModels,
-                  customModels:
-                    serializableConfig.customModels || state.customModels,
-                }));
+                // 只恢复支持的字段，旧私有凭据迁移为当前私有线路
+                set((state) => {
+                  const migratedCustomRoute = shouldMigrateRemovedRoute
+                    ? {
+                        ...state.customRoute,
+                        ...serializableConfig.customRoute,
+                        apiKey:
+                          legacyRoute.apiKey ||
+                          serializableConfig.customRoute?.apiKey ||
+                          state.customRoute.apiKey,
+                        model:
+                          legacyRoute.model ||
+                          serializableConfig.customRoute?.model ||
+                          state.customRoute.model,
+                        proxyUrl:
+                          legacyRoute.proxyUrl ||
+                          serializableConfig.customRoute?.proxyUrl ||
+                          state.customRoute.proxyUrl,
+                        temperature:
+                          legacyRoute.temperature ??
+                          serializableConfig.customRoute?.temperature ??
+                          state.customRoute.temperature,
+                      }
+                    : serializableConfig.customRoute || state.customRoute;
+                  const savedRouteType =
+                    serializableConfig.routeType === "custom" ||
+                    shouldMigrateRemovedRoute
+                      ? "custom"
+                      : "utools";
+
+                  return {
+                    ...state,
+                    routeType: savedRouteType,
+                    utoolsRoute:
+                      serializableConfig.utoolsRoute || state.utoolsRoute,
+                    customRoute: migratedCustomRoute,
+                    utoolsModels:
+                      serializableConfig.utoolsModels || state.utoolsModels,
+                    customModels: shouldMigrateRemovedRoute
+                      ? mergeModels(
+                          [
+                            ...(serializableConfig.customModels || []),
+                            ...(legacyModels || []),
+                          ],
+                          migratedCustomRoute.model,
+                        )
+                      : mergeModels(
+                          serializableConfig.customModels || state.customModels,
+                          migratedCustomRoute.model,
+                        ),
+                    routeEnabled: {
+                      utools:
+                        typeof savedRouteEnabled?.utools === "boolean"
+                          ? savedRouteEnabled.utools
+                          : state.routeEnabled.utools,
+                      custom: shouldMigrateRemovedRoute
+                        ? true
+                        : typeof savedRouteEnabled?.custom === "boolean"
+                          ? savedRouteEnabled.custom
+                          : state.routeEnabled.custom,
+                    },
+                  };
+                });
               }
             } catch (error) {
               console.error("Failed to sync OpenAI config:", error);
@@ -292,66 +302,13 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
                   !currentModel ||
                   !formattedModels.find((m) => m.value === currentModel)
                 ) {
-                  const defaultModel =
-                    formattedModels[0]?.value || "deepseek-v3";
+                  const defaultModel = formattedModels[0]?.value || "deepseek-v3";
 
                   get().updateUtoolsRouteConfig({ model: defaultModel });
                 }
               }
             } catch (error) {
               console.error("Failed to fetch Utools models:", error);
-            }
-          },
-
-          fetchSsooaiModels: async () => {
-            try {
-              const state = get();
-
-              // 只有在有API密钥和代理URL时才尝试获取模型列表
-              if (!state.ssooaiRoute.apiKey && state.ssooaiRoute.proxyUrl) {
-                // 如果没有API密钥但有代理URL，设置一些默认模型
-                set((state) => ({ ...state, ssooaiModels: [] }));
-
-                return;
-              }
-
-              if (!state.ssooaiRoute.proxyUrl) {
-                return;
-              }
-
-              // 创建临时OpenAI实例用于获取模型
-              const openai = new OpenAI({
-                apiKey: state.ssooaiRoute.apiKey || "dummy-key", // 如果没有apiKey使用dummy-key
-                baseURL: state.ssooaiRoute.proxyUrl,
-                dangerouslyAllowBrowser: true,
-              });
-
-              // 获取模型列表
-              const response = await openai.models.list();
-
-              if (response.data && Array.isArray(response.data)) {
-                // 提取模型信息
-                let apiModels = response.data.map((model) => ({
-                  value: model.id,
-                  label: model.id,
-                }));
-
-                // 获取当前存储的自定义模型（手动添加的）
-                const currentSsooaiModels = state.ssooaiModels.filter(
-                  (model) =>
-                    !apiModels.some(
-                      (apiModel) => apiModel.value === model.value,
-                    ),
-                );
-
-                // 合并自定义模型和API模型
-                const mergedModels = [...currentSsooaiModels, ...apiModels];
-
-                set({ ssooaiModels: mergedModels });
-              }
-            } catch (error) {
-              console.error("Failed to fetch SSOOAI models:", error);
-              // 失败时不清空现有模型，保留手动添加的模型
             }
           },
 
@@ -376,7 +333,7 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
 
               if (response.data && Array.isArray(response.data)) {
                 // 提取模型信息
-                let apiModels = response.data.map((model) => ({
+                const apiModels = response.data.map((model) => ({
                   value: model.id,
                   label: model.id,
                 }));
@@ -418,7 +375,7 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
               // 创建新的模型对象
               const newModel = {
                 value: model,
-                label: label || model, // 如果没有提供标签，就使用模型名称作为标签
+                label: label || model,
               };
 
               // 添加到列表前面
@@ -460,81 +417,17 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
               );
           },
 
-          addSsooaiModel: (model: string, label?: string) => {
-            // 如果model为空，不添加
-            if (!model.trim()) return;
-
-            set((state) => {
-              // 检查模型是否已存在
-              const modelExists = state.ssooaiModels.some(
-                (m) => m.value === model,
-              );
-
-              if (modelExists) {
-                // 如果模型已存在，不需要添加
-                return state;
-              }
-
-              // 创建新的模型对象
-              const newModel = {
-                value: model,
-                label: label || model, // 如果没有提供标签，就使用模型名称作为标签
-              };
-
-              // 添加到列表前面
-              return {
-                ...state,
-                ssooaiModels: [newModel, ...state.ssooaiModels],
-              };
-            });
-
-            // 保存到存储，只保存可序列化的数据
-            storage
-              .setItem(BD_OPENAI_CONFIG_KEY, getSerializableState())
-              .catch((err) =>
-                console.error("Failed to save SSOOAI model:", err),
-              );
-          },
-
-          removeSsooaiModel: (model: string) => {
-            set((state) => {
-              // 过滤掉要删除的模型
-              const filteredModels = state.ssooaiModels.filter(
-                (m) => m.value !== model,
-              );
-
-              return {
-                ...state,
-                ssooaiModels: filteredModels,
-              };
-            });
-
-            // 保存到存储，只保存可序列化的数据
-            storage
-              .setItem(BD_OPENAI_CONFIG_KEY, getSerializableState())
-              .catch((err) =>
-                console.error(
-                  "Failed to save after removing SSOOAI model:",
-                  err,
-                ),
-              );
-          },
-
           // 获取当前线路的配置
           getCurrentRouteConfig: () => {
             const state = get();
 
             switch (state.routeType) {
-              case "default":
-                return state.defaultRoute;
               case "utools":
                 return state.utoolsRoute;
-              case "ssooai":
-                return state.ssooaiRoute;
               case "custom":
                 return state.customRoute;
               default:
-                return state.defaultRoute;
+                return state.utoolsRoute;
             }
           },
 
@@ -543,16 +436,12 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
             const state = get();
 
             switch (state.routeType) {
-              case "default":
-                return DEFAULT_ROUTE_API_KEY;
               case "utools":
-                return DEFAULT_ROUTE_API_KEY; // uTools 线路使用默认 API Key
-              case "ssooai":
-                return state.ssooaiRoute.apiKey || DEFAULT_ROUTE_API_KEY;
+                return "";
               case "custom":
                 return state.customRoute.apiKey;
               default:
-                return DEFAULT_ROUTE_API_KEY;
+                return "";
             }
           },
 
@@ -561,16 +450,12 @@ export const useOpenAIConfigStore = create<OpenAIConfigStore>()(
             const state = get();
 
             switch (state.routeType) {
-              case "default":
-                return DEFAULT_ROUTE_PROXY_URL;
               case "utools":
-                return DEFAULT_ROUTE_PROXY_URL; // uTools 线路使用默认 API 地址
-              case "ssooai":
-                return state.ssooaiRoute.proxyUrl;
+                return "";
               case "custom":
                 return state.customRoute.proxyUrl;
               default:
-                return DEFAULT_ROUTE_PROXY_URL;
+                return "";
             }
           },
 

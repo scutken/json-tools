@@ -13,7 +13,7 @@ export const SearchBox: React.FC = () => {
       isClearable
       aria-label="搜索工具"
       classNames={{
-        base: "w-full md:max-w-sm",
+        base: "w-full md:w-[320px]",
         inputWrapper: "shadow-sm",
       }}
       placeholder="搜索工具名称、描述或分类..."

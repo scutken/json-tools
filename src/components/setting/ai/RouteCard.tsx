@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+
 import type { AIRouteType } from "@/store/useOpenAIConfigStore";
 
 import { Button, Switch } from "@heroui/react";
@@ -12,15 +13,14 @@ interface RouteCardProps {
   isSelected: boolean;
   /** 线路是否可用（uTools 需在 uTools 环境内） */
   available?: boolean;
-  /** 是否显示「配置」按钮（ssooai / custom 有） */
+  /** 是否显示「配置」按钮 */
   showConfigure?: boolean;
   onToggle: (enabled: boolean) => void;
   onConfigure?: () => void;
 }
 
 /**
- * 单个 AI 线路卡片（Apple 系统风）：白色圆角卡片 + 品牌色图标块 +
- * 状态徽标（绿=启用 / 灰=不可用）+ 开关/配置按钮。
+ * 单个 AI 线路卡片。
  */
 export function RouteCard({
   routeType,
@@ -61,10 +61,6 @@ export function RouteCard({
           <span className="rounded-full bg-default-200/60 px-2 py-0.5 text-[10.5px] font-semibold text-default-400">
             ● 不可用
           </span>
-        ) : routeType === "default" ? (
-          <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10.5px] font-semibold text-success">
-            ● 始终启用
-          </span>
         ) : enabled ? (
           <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10.5px] font-semibold text-success">
             ● 已启用
@@ -76,7 +72,7 @@ export function RouteCard({
         )}
 
         <div className="flex items-center gap-2">
-          {showConfigure && onConfigure ? (
+          {showConfigure && available && onConfigure ? (
             <Button
               radius="full"
               size="sm"
@@ -88,7 +84,7 @@ export function RouteCard({
           ) : null}
           <Switch
             color="success"
-            isDisabled={!available || routeType === "default"}
+            isDisabled={!available}
             isSelected={enabled}
             size="sm"
             onValueChange={onToggle}

@@ -82,8 +82,8 @@ export default defineConfig({
         type: "module",
       },
       manifest: {
-        name: "JSON Tools - 多功能JSON处理助手",
-        short_name: "JSON Tools",
+        name: "合社JSON - 多功能JSON处理助手",
+        short_name: "合社JSON",
         description: "强大的JSON工具集，支持格式化、验证、转换、编辑等多种功能",
         background_color: "#ffffff",
         display: "standalone",

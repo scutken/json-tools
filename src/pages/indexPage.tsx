@@ -8,6 +8,8 @@ import { useTabStore, type TabItem } from "@/store/useTabStore";
 import DynamicTabs, {
   DynamicTabsRef,
 } from "@/components/dynamicTabs/DynamicTabs.tsx";
+import WorkbenchHeader from "@/components/workbench/WorkbenchHeader";
+import WorkbenchBottomBar from "@/components/workbench/WorkbenchBottomBar";
 import MonacoJsonEditor, {
   MonacoJsonEditorRef,
 } from "@/components/monacoEditor/MonacoJsonEditor.tsx";
@@ -57,6 +59,7 @@ export default function IndexPage() {
 
   // 历史记录弹窗状态
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isJsonQueryVisible, setJsonQueryVisible] = useState(false);
 
   const {
     tabs,
@@ -185,38 +188,7 @@ export default function IndexPage() {
 
   const renderMonacoJsonEditor = () => {
     return (
-      <>
-        <MonacoOperationBar
-          onAiClick={() => {
-            return monacoJsonEditorRefs.current[activeTabKey].showAiPrompt();
-          }}
-          onClear={() => {
-            return monacoJsonEditorRefs.current[activeTabKey].clear();
-          }}
-          onCopy={() => {
-            return monacoJsonEditorRefs.current[activeTabKey].copy();
-          }}
-          onCompress={() => {
-            return monacoJsonEditorRefs.current[activeTabKey].compress();
-          }}
-          onEscape={() => {
-            return monacoJsonEditorRefs.current[activeTabKey].escape();
-          }}
-          onFieldSort={(type) => {
-            return monacoJsonEditorRefs.current[activeTabKey].fieldSort(type);
-          }}
-          onFormat={() => {
-            return monacoJsonEditorRefs.current[activeTabKey].format();
-          }}
-          onMore={(key) => {
-            return monacoJsonEditorRefs.current[activeTabKey].moreAction(key);
-          }}
-          onSaveFile={() => {
-            return monacoJsonEditorRefs.current[activeTabKey].saveFile();
-          }}
-          onShowHistory={handleShowHistory}
-        />
-        <div className="editor-container flex-grow overflow-hidden">
+      <div className="editor-container flex-grow overflow-hidden">
           {tabs
             .filter((tab) => tab.kind === "json")
             .map((tab) => {
@@ -263,11 +235,11 @@ export default function IndexPage() {
                       }
                     }}
                     height="100%"
-                    isMenu={true}
+                    isMenu={false}
                     language={tab.editorSettings?.language || "json"}
                     minimap={true}
                     showAi={true}
-                    showJsonQueryFilter={true}
+                    showJsonQueryFilter={isJsonQueryVisible}
                     tabKey={tab.key}
                     tabTitle={tab.title}
                     theme={theme === "dark" ? "vs-dark" : "vs-light"}
@@ -286,8 +258,7 @@ export default function IndexPage() {
               </div>
             );
             })}
-        </div>
-      </>
+      </div>
     );
   };
 
@@ -295,27 +266,6 @@ export default function IndexPage() {
   const renderMonacoDiffEditor = () => {
     return (
       <div className="w-full h-full flex flex-col">
-        <MonacoDiffOperationBar
-          ref={monacoDiffOperationBarRef}
-          onAiClick={() => {
-            monacoDiffEditorRefs.current[activeTabKey].showAiPrompt();
-          }}
-          onClear={(type) => {
-            return monacoDiffEditorRefs.current[activeTabKey].clear(type);
-          }}
-          onCopy={(type) => {
-            return monacoDiffEditorRefs.current[activeTabKey].copy(type);
-          }}
-          onFieldSort={(type, sort: "asc" | "desc") => {
-            return monacoDiffEditorRefs.current[activeTabKey].fieldSort(
-              type,
-              sort,
-            );
-          }}
-          onFormat={(type) => {
-            return monacoDiffEditorRefs.current[activeTabKey].format(type);
-          }}
-        />
         <div className="editor-container flex-grow overflow-hidden">
           {tabs
             .filter((tab) => tab.kind === "json")
@@ -750,6 +700,22 @@ export default function IndexPage() {
     setIsHistoryModalOpen(true);
   };
 
+  useEffect(() => {
+    if (!isTabStoreReady) return;
+    if (sidebarStore.historyRequestId === 0) return;
+
+    const currentTab = activeTab();
+
+    if (currentTab?.kind === "json") {
+      setIsHistoryModalOpen(true);
+      sidebarStore.consumeHistoryModal();
+    }
+  }, [activeTab, activeTabKey, isTabStoreReady, sidebarStore, sidebarStore.historyRequestId, tabs]);
+
+  const handleEditorModeChange = (mode: SidebarKeys) => {
+    sidebarStore.updateClickSwitchKey(mode);
+  };
+
   const handleRestoreHistory = (historyKey: string) => {
     const currentTab = activeTab();
     if (!currentTab) return;
@@ -800,6 +766,74 @@ export default function IndexPage() {
 
     clearTabHistory(currentTab.key);
     toast.success("历史记录已清空");
+  };
+
+  const renderBottomActions = () => {
+    if (activeTabItem?.kind !== "json") return null;
+
+    switch (sidebarStore.activeKey) {
+      case SidebarKeys.textView:
+        return (
+          <MonacoOperationBar
+            onAiClick={() => {
+              return monacoJsonEditorRefs.current[activeTabKey]?.showAiPrompt();
+            }}
+            onClear={() => {
+              return monacoJsonEditorRefs.current[activeTabKey]?.clear() ?? false;
+            }}
+            onCopy={() => {
+              return monacoJsonEditorRefs.current[activeTabKey]?.copy() ?? false;
+            }}
+            onCompress={() => {
+              return monacoJsonEditorRefs.current[activeTabKey]?.compress() ?? false;
+            }}
+            onEscape={() => {
+              return monacoJsonEditorRefs.current[activeTabKey]?.escape() ?? false;
+            }}
+            onFieldSort={(type) => {
+              return monacoJsonEditorRefs.current[activeTabKey]?.fieldSort(type) ?? false;
+            }}
+            onFormat={() => {
+              return monacoJsonEditorRefs.current[activeTabKey]?.format() ?? false;
+            }}
+            onMore={(key) => {
+              return monacoJsonEditorRefs.current[activeTabKey]?.moreAction(key) ?? false;
+            }}
+            onSaveFile={() => {
+              return monacoJsonEditorRefs.current[activeTabKey]?.saveFile() ?? false;
+            }}
+            onShowHistory={handleShowHistory}
+            isFilterVisible={isJsonQueryVisible}
+            onToggleFilter={() => setJsonQueryVisible((value) => !value)}
+          />
+        );
+      case SidebarKeys.diffView:
+        return (
+          <MonacoDiffOperationBar
+            ref={monacoDiffOperationBarRef}
+            onAiClick={() => {
+              monacoDiffEditorRefs.current[activeTabKey]?.showAiPrompt();
+            }}
+            onClear={(type) => {
+              return monacoDiffEditorRefs.current[activeTabKey]?.clear(type) ?? false;
+            }}
+            onCopy={(type) => {
+              return monacoDiffEditorRefs.current[activeTabKey]?.copy(type) ?? false;
+            }}
+            onFieldSort={(type, sort: "asc" | "desc") => {
+              return monacoDiffEditorRefs.current[activeTabKey]?.fieldSort(
+                type,
+                sort,
+              ) ?? false;
+            }}
+            onFormat={(type) => {
+              return monacoDiffEditorRefs.current[activeTabKey]?.format(type) ?? false;
+            }}
+          />
+        );
+      default:
+        return null;
+    }
   };
 
   // 添加renderJsonTableView函数
@@ -970,16 +1004,27 @@ export default function IndexPage() {
 
   return (
     <div className="flex flex-col h-full dark:bg-vscode-dark">
-      <DynamicTabs
-        ref={tabRef}
-        onClose={closeTabHandle}
-        onSwitch={tabSwitchHandle}
-        onUrlRefresh={urlRefreshHandle}
+      <WorkbenchHeader
+        tabs={
+          <DynamicTabs
+            ref={tabRef}
+            onClose={closeTabHandle}
+            onSwitch={tabSwitchHandle}
+            onUrlRefresh={urlRefreshHandle}
+          />
+        }
       />
       <div className="flex-grow h-0 overflow-hidden flex flex-col">
         {activeTabItem?.kind === "json" && renderEditor()}
         {renderWorkspaceTabs()}
       </div>
+      <WorkbenchBottomBar
+        activeMode={sidebarStore.activeKey}
+        actions={renderBottomActions()}
+        showEditorToolbar={activeTabItem?.kind === "json"}
+        onOpenSettings={() => navigate("/settings")}
+        onModeChange={handleEditorModeChange}
+      />
 
       {/* 历史记录弹窗 */}
       <TabHistoryModal

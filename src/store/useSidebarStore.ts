@@ -9,8 +9,11 @@ import { SidebarKeys } from "@/components/sidebar/Items.tsx";
 interface SidebarStore {
   activeKey: SidebarKeys;
   clickSwitchKey: SidebarKeys;
+  historyRequestId: number;
   updateActiveKey: (key: SidebarKeys) => void;
   updateClickSwitchKey: (key: SidebarKeys) => void;
+  requestHistoryModal: () => void;
+  consumeHistoryModal: () => void;
   syncSidebarStore: () => Promise<void>;
   switchActiveKey: () => void;
 }
@@ -23,8 +26,12 @@ export const useSidebarStore = create<SidebarStore>()(
       (set) => ({
         activeKey: SidebarKeys.textView,
         clickSwitchKey: SidebarKeys.textView,
+        historyRequestId: 0,
         updateActiveKey: (key) => set({ activeKey: key }),
         updateClickSwitchKey: (key) => set({ clickSwitchKey: key }),
+        requestHistoryModal: () =>
+          set((state) => ({ historyRequestId: state.historyRequestId + 1 })),
+        consumeHistoryModal: () => set({ historyRequestId: 0 }),
         switchActiveKey: () =>
           set((state) => ({ activeKey: state.clickSwitchKey })),
         syncSidebarStore: async () => {

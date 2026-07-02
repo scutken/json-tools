@@ -325,6 +325,13 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
   const [filterError, setFilterError] = useState<string | null>(null);
   const [filteredValue, setFilteredValue] = useState<string>("");
 
+  useEffect(() => {
+    if (showJsonQueryFilter) return;
+
+    setShowFilterEditor(false);
+    setFilterError(null);
+  }, [showJsonQueryFilter]);
+
   const {
     isOpen: jsonErrorDetailsModel,
     onOpen: openJsonErrorDetailsModel,

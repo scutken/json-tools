@@ -1,12 +1,7 @@
 import OpenAI from "openai";
 import { ChatCompletionMessageParam } from "openai/resources";
 
-import {
-  useOpenAIConfigStore,
-  AIRouteType,
-  DEFAULT_ROUTE_API_KEY,
-  DEFAULT_ROUTE_PROXY_URL,
-} from "@/store/useOpenAIConfigStore.ts";
+import { useOpenAIConfigStore, AIRouteType } from "@/store/useOpenAIConfigStore.ts";
 import toast from "@/utils/toast.tsx";
 
 // 检查 utools 是否可用
@@ -18,12 +13,12 @@ const isUtoolsAvailable = typeof window !== "undefined" && "utools" in window;
  */
 export class OpenAIService {
   private openai: OpenAI | null = null;
-  private routeType: AIRouteType = "default";
+  private routeType: AIRouteType = "utools";
   maxTokens: number = 10000;
 
   // 添加config公共属性，用于存储和恢复配置
   public config = {
-    routeType: "default" as AIRouteType,
+    routeType: "utools" as AIRouteType,
     model: "",
     temperature: 0.7,
   };
@@ -84,12 +79,8 @@ export class OpenAIService {
    * 初始化OpenAI客户端
    */
   private initOpenAI(): void {
-    // 如果是 utools 线路，不需要初始化 OpenAI 客户端
     if (this.routeType === "utools") {
-      if (!isUtoolsAvailable) {
-        toast.error("uTools API 不可用，请确保在 uTools 环境中运行");
-        this.openai = null;
-      }
+      this.openai = null;
 
       return;
     }
@@ -97,57 +88,23 @@ export class OpenAIService {
     const apiKey = this.getCurrentApiKey();
     const proxyUrl = this.getCurrentProxyUrl();
 
-    if (!apiKey) {
+    if (!apiKey || !proxyUrl) {
       this.openai = null;
 
       return;
     }
 
-    // 根据不同的线路类型进行初始化
-    switch (this.routeType) {
-      case "default":
-        // 默认线路使用内置的代理
-        this.openai = new OpenAI({
-          apiKey: DEFAULT_ROUTE_API_KEY,
-          baseURL: DEFAULT_ROUTE_PROXY_URL,
-          dangerouslyAllowBrowser: true,
-        });
-        break;
-
-      case "ssooai":
-        // SSOOAI线路使用SSOOAI的API密钥和地址
-        const ssooaiApiKey = useOpenAIConfigStore.getState().ssooaiRoute.apiKey;
-        const ssooaiProxyUrl =
-          useOpenAIConfigStore.getState().ssooaiRoute.proxyUrl;
-
-        if (!ssooaiApiKey) {
-          this.openai = null;
-
-          return;
-        }
-
-        this.openai = new OpenAI({
-          apiKey: ssooaiApiKey,
-          baseURL: ssooaiProxyUrl,
-          dangerouslyAllowBrowser: true,
-        });
-        break;
-
-      case "custom":
-        this.openai = new OpenAI({
-          apiKey,
-          baseURL: proxyUrl,
-          dangerouslyAllowBrowser: true,
-        });
-        break;
-    }
+    this.openai = new OpenAI({
+      apiKey,
+      baseURL: proxyUrl,
+      dangerouslyAllowBrowser: true,
+    });
   }
 
   /**
    * 验证服务是否已准备好
    */
   private validateService(): boolean {
-    // 如果是 utools 线路，检查 utools 是否可用
     if (this.routeType === "utools") {
       if (!isUtoolsAvailable) {
         toast.error("uTools API 不可用，请确保在 uTools 环境中运行");
@@ -160,14 +117,12 @@ export class OpenAIService {
 
     if (!this.openai) {
       const apiKey = this.getCurrentApiKey();
+      const proxyUrl = this.getCurrentProxyUrl();
 
       if (!apiKey) {
-        if (this.routeType === "custom") {
-          toast.error("请在设置中输入您的 API 密钥");
-        } else {
-          // 默认线路应该总是有 API Key
-          toast.error("API 密钥配置错误");
-        }
+        toast.error("Please enter your API key in Settings");
+      } else if (!proxyUrl) {
+        toast.error("Please enter your API endpoint in Settings");
       } else {
         this.initOpenAI();
         if (!this.openai) {
@@ -221,7 +176,6 @@ export class OpenAIService {
       const options = {
         model: modelToUse,
         messages: utoolsMessages,
-        // 可以在这里添加其他 utools.ai 支持的参数
       };
 
       callbacks.onProcessing?.(`AI 正在使用 ${modelToUse} 模型处理数据...`);
@@ -285,25 +239,20 @@ export class OpenAIService {
       onError?: (error: Error) => void;
     } = {},
   ): Promise<boolean> {
-    // 验证服务是否已初始化
     if (!this.validateService()) {
       return false;
     }
 
-    // 如果是 utools 线路，使用 utools.ai API
     if (this.routeType === "utools") {
       return this.createUtoolsChatCompletion(messages, callbacks);
     }
 
-    // 开始处理
     callbacks.onStart?.();
     callbacks.onProcessing?.("Connecting to OpenAI...");
 
-    // 根据线路类型获取模型和温度
     const modelToUse = this.getCurrentModel();
     const temperature = this.getCurrentTemperature();
 
-    // 使用流式请求
     const stream = await this.openai!.chat.completions.create({
       model: modelToUse,
       messages: messages,
@@ -349,75 +298,22 @@ export class OpenAIService {
    * @returns 返回一个Promise，成功则resolve，失败则reject
    */
   public async testConnection(routeType: AIRouteType): Promise<boolean> {
-    // 保存当前线路类型
     const currentRouteType = this.routeType;
 
     try {
-      // 临时切换到要测试的线路
       this.routeType = routeType;
       this.initOpenAI();
 
-      // 根据不同线路类型进行测试
       switch (routeType) {
-        case "default":
-          // 测试默认线路
-          if (!this.openai) {
-            throw new Error("默认线路初始化失败");
-          }
-
-          // 简单测试API可用性
-          if (this.openai) {
-            await this.openai.models.list();
-          } else {
-            throw new Error("API客户端初始化失败");
-          }
-
-          return true;
-
-        case "ssooai":
-          // 测试SSOOAI线路
-          const ssooaiApiKey =
-            useOpenAIConfigStore.getState().ssooaiRoute.apiKey;
-          const ssooaiProxyUrl =
-            useOpenAIConfigStore.getState().ssooaiRoute.proxyUrl;
-
-          if (!ssooaiApiKey) {
-            throw new Error("请提供SSOOAI API密钥");
-          }
-
-          if (!ssooaiProxyUrl) {
-            throw new Error("SSOOAI API地址配置错误");
-          }
-
-          // 临时创建SSOOAI客户端
-          const ssooaiClient = new OpenAI({
-            apiKey: ssooaiApiKey,
-            baseURL: ssooaiProxyUrl,
-            dangerouslyAllowBrowser: true,
-          });
-
-          // 测试API可用性
-          await ssooaiClient.models.list();
-
-          // 测试成功后，获取模型列表
-          await useOpenAIConfigStore.getState().fetchSsooaiModels();
-
-          return true;
-
         case "utools":
-          // 测试utools线路
           if (!isUtoolsAvailable) {
             throw new Error("uTools API 不可用，请确保在 uTools 环境中运行");
           }
 
-          // 检查是否有可用模型
-          const utoolsModels = useOpenAIConfigStore.getState().utoolsModels;
-
-          if (!utoolsModels || utoolsModels.length === 0) {
+          if (!useOpenAIConfigStore.getState().utoolsModels.length) {
             throw new Error("未找到可用的 uTools 模型");
           }
 
-          // 简单测试一下 utools.ai API 是否可用
           if (!(window as any).utools || !(window as any).utools.ai) {
             throw new Error("uTools AI 功能不可用");
           }
@@ -425,43 +321,33 @@ export class OpenAIService {
           return true;
 
         case "custom":
-          // 测试自定义线路
           if (!this.openai) {
             const apiKey = useOpenAIConfigStore.getState().customRoute.apiKey;
-            const proxyUrl =
-              useOpenAIConfigStore.getState().customRoute.proxyUrl;
+            const proxyUrl = useOpenAIConfigStore.getState().customRoute.proxyUrl;
 
             if (!apiKey) {
-              throw new Error("请提供API密钥");
+              throw new Error("Please enter your API key in Settings");
             }
 
             if (!proxyUrl) {
-              throw new Error("请提供API地址");
+              throw new Error("Please enter your API endpoint in Settings");
             }
 
             throw new Error("自定义线路初始化失败");
           }
 
-          // 简单测试API可用性
-          if (this.openai) {
-            await this.openai.models.list();
-
-            // 测试成功后，获取模型列表
-            await useOpenAIConfigStore.getState().fetchCustomModels();
-          } else {
-            throw new Error("API客户端初始化失败");
-          }
+          await this.openai.models.list();
+          await useOpenAIConfigStore.getState().fetchCustomModels();
 
           return true;
 
         default:
-          throw new Error("未知的线路类型");
+          return false;
       }
     } catch (error) {
       console.error("测试线路失败:", error);
       throw error;
     } finally {
-      // 恢复之前的线路类型
       this.routeType = currentRouteType;
       this.initOpenAI();
     }
@@ -507,7 +393,6 @@ export class OpenAIService {
     max_tokens?: number;
     model?: string;
   }): Promise<any> {
-    // 验证服务是否已初始化
     if (!this.validateService()) {
       throw new Error("AI服务未初始化或配置错误");
     }
@@ -516,7 +401,6 @@ export class OpenAIService {
     const temperature = options.temperature || this.getCurrentTemperature();
 
     try {
-      // 为utools线路提供特殊处理
       if (this.routeType === "utools") {
         if (!isUtoolsAvailable) {
           throw new Error("uTools API 不可用");
@@ -568,7 +452,6 @@ export class OpenAIService {
         });
       }
 
-      // 对于其他线路，使用普通的完成请求
       if (!this.openai) {
         throw new Error("OpenAI客户端未初始化");
       }
