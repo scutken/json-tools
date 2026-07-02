@@ -12,9 +12,9 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useState } from "react";
-import { useTheme } from "next-themes";
 
 import {
+  ChoiceCard,
   ControlSlot,
   GroupLabel,
   SectionCard,
@@ -23,25 +23,34 @@ import {
 } from "../settingPrimitives";
 
 import toast from "@/utils/toast";
-import { useSettingsStore } from "@/store/useSettingsStore";
+import { useSettingsStore, type FontSize } from "@/store/useSettingsStore";
 import { useTabStore } from "@/store/useTabStore";
 import { storage } from "@/lib/indexedDBStore";
 import { useOpenAIConfigStore } from "@/store/useOpenAIConfigStore";
+
+const FONT_OPTIONS: Array<{
+  value: FontSize;
+  label: string;
+  desc: string;
+  previewSize: string;
+}> = [
+  { value: "small", label: "小号", desc: "紧凑省空间", previewSize: "13px" },
+  { value: "medium", label: "标准", desc: "平衡阅读", previewSize: "16px" },
+  { value: "large", label: "大号", desc: "清晰易见", previewSize: "19px" },
+];
 
 /**
  * 通用设置（Apple 系统风）：按「外观 / 编辑器 / 数据 / 危险操作」分组。
  */
 export function GeneralSettings() {
   const {
-    expandSidebar,
     defaultIndentSize,
+    fontSize,
     persistentDataEnabled,
-    setExpandSidebar,
+    setFontSize,
     setPersistentDataEnabled,
     setDefaultIndentSize,
   } = useSettingsStore();
-
-  const { theme, setTheme } = useTheme();
 
   const {
     isOpen: isConfirmOpen,
@@ -75,10 +84,14 @@ export function GeneralSettings() {
     toast.success(`默认缩进大小已设置为 ${value} 个空格`);
   };
 
+  const handleFontSizeChange = (size: FontSize) => {
+    setFontSize(size);
+    toast.success("字体大小已更改");
+  };
+
   const removeStore = () => {
     storage.clear();
     useSettingsStore.setState({
-      expandSidebar: false,
       monacoEditorCDN: "local",
       chatStyle: "bubble",
       timestampDecoderEnabled: true,
@@ -95,44 +108,10 @@ export function GeneralSettings() {
 
   return (
     <div className="h-full">
-      <SectionHeader description="管理应用的基本设置和偏好" title="通用设置" />
-
-      <GroupLabel>外观</GroupLabel>
-      <SectionCard divided>
-        <SettingRow
-          description="切换深色主题以保护眼睛"
-          icon="solar:moon-bold"
-          title="深色模式"
-          tone="primary"
-        >
-          <ControlSlot>
-            <Switch
-              color="success"
-              isSelected={theme === "dark"}
-              size="lg"
-              onValueChange={(value) => setTheme(value ? "dark" : "light")}
-            />
-          </ControlSlot>
-        </SettingRow>
-        <SettingRow
-          description="应用启动时默认展开侧边栏"
-          icon="solar:square-top-down-bold"
-          title="展开 Tab 栏"
-          tone="info"
-        >
-          <ControlSlot>
-            <Switch
-              color="success"
-              isSelected={expandSidebar}
-              size="lg"
-              onValueChange={(value) => setExpandSidebar(value)}
-            />
-          </ControlSlot>
-        </SettingRow>
-      </SectionCard>
+      <SectionHeader description="管理编辑器显示、默认格式和本地数据" title="编辑器与数据" />
 
       <GroupLabel>编辑器</GroupLabel>
-      <SectionCard>
+      <SectionCard divided>
         <SettingRow
           description="新标签页 JSON 的缩进空格数"
           icon="fluent:text-indent-increase-16-filled"
@@ -155,6 +134,26 @@ export function GeneralSettings() {
             />
           </ControlSlot>
         </SettingRow>
+        <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-3 sm:p-4">
+          {FONT_OPTIONS.map((opt) => (
+            <ChoiceCard
+              key={opt.value}
+              selected={fontSize === opt.value}
+              onSelect={() => handleFontSizeChange(opt.value)}
+            >
+              <div
+                className="mb-2 font-semibold text-default-900"
+                style={{ fontSize: opt.previewSize }}
+              >
+                Aa 示例
+              </div>
+              <p className="text-[12px] font-semibold text-default-900">
+                {opt.label}
+              </p>
+              <p className="mt-0.5 text-[11px] text-default-500">{opt.desc}</p>
+            </ChoiceCard>
+          ))}
+        </div>
       </SectionCard>
 
       <GroupLabel>数据</GroupLabel>

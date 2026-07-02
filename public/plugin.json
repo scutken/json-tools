@@ -1,13 +1,16 @@
 {
   "main": "index.html",
   "logo": "logo.png",
+  "development": {
+    "main": "http://localhost:5173/index.html"
+  },
   "features": [
     {
       "code": "json",
-      "explain": "json 工具箱",
+      "explain": "合社JSON 工具箱",
       "cmds": [
         "json",
-        "json-tools",
+        "合社JSON",
         "格式化",
         {
           "type": "regex",

@@ -51,13 +51,15 @@ const StatusButton = forwardRef<HTMLButtonElement, StatusButtonProps>(
     return (
       <Button
         className={cn(
-          "min-w-0 px-1.5 gap-1 text-default-600 h-7 text-xs",
+          "workbench-focus-ring h-7 min-w-7 rounded-md px-1.5 text-xs",
+          "text-default-600 hover:bg-default-100 hover:text-default-900",
           {
             "text-green-500": status === IconStatus.Success,
             "text-red-500": status === IconStatus.Error,
           },
           className,
         )}
+        aria-label={successText && status === IconStatus.Success ? successText : text}
         endContent={endContent}
         startContent={renderIcon()}
         variant="light"

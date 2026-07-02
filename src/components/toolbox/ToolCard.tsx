@@ -1,8 +1,7 @@
 import type { Tool } from "@/store/useToolboxStore.ts";
 
 import React from "react";
-import { Card, CardBody, CardFooter } from "@heroui/card";
-import { Chip } from "@heroui/chip";
+import { Card, CardBody } from "@heroui/card";
 import { Icon } from "@iconify/react";
 
 import { useTabStore } from "@/store/useTabStore";
@@ -21,47 +20,27 @@ export const ToolCard: React.FC<ToolCardProps> = ({ tool }) => {
   return (
     <Card
       isPressable
-      className="w-full h-[144px] cursor-pointer rounded-lg transition-shadow duration-200 hover:shadow-md flex flex-col"
+      className="workbench-surface workbench-focus-ring cursor-pointer p-3 transition-colors hover:bg-default-100"
       onPress={handleCardClick}
     >
-      <CardBody className="overflow-hidden p-3 flex-grow bg-default-100/30">
-        <div className="flex items-start gap-3 mb-2">
-          <div className="p-2 rounded-lg bg-default-100 flex-none">
-            <Icon
-              className="text-primary"
-              height={22}
-              icon={tool.icon}
-              width={22}
-            />
+      <CardBody className="overflow-hidden p-0">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-default-100 text-default-700">
+            <Icon icon={tool.icon} width={20} />
           </div>
-          <div className="overflow-hidden min-w-0">
-            <h3 className="text-sm font-semibold truncate">{tool.name}</h3>
-            <div className="flex flex-wrap gap-1 mt-1 max-h-6 overflow-hidden">
-              {tool.category.length > 0 &&
-                tool.category.map((category: string) => (
-                  <Chip
-                    key={category}
-                    className="max-w-[96px] h-5"
-                    color="primary"
-                    size="sm"
-                    variant="flat"
-                  >
-                    <span className="truncate">{category}</span>
-                  </Chip>
-                ))}
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-medium text-default-900">{tool.name}</h3>
+            <p className="mt-1 line-clamp-2 text-xs text-default-500">{tool.description}</p>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {tool.category.slice(0, 2).map((category) => (
+                <span key={category} className="rounded bg-default-100 px-1.5 py-0.5 text-[11px] text-default-500">
+                  {category}
+                </span>
+              ))}
             </div>
           </div>
         </div>
-        <p className="text-default-500 text-xs leading-5 line-clamp-2">
-          {tool.description}
-        </p>
       </CardBody>
-      <CardFooter className="bg-default-100/30 border-t-1 border-default-100 justify-end gap-2 flex-none px-3 py-2">
-        <div className="flex items-center text-primary text-xs">
-          <span>新建工具 Tab</span>
-          <Icon className="ml-1" icon="solar:arrow-right-linear" width={16} />
-        </div>
-      </CardFooter>
     </Card>
   );
 };

@@ -41,10 +41,10 @@ export function SettingsSidebar({
               aria-label={item.label}
               aria-pressed={isActive}
               className={cn(
-                "flex h-9 w-full items-center justify-center gap-2 rounded-lg px-2 text-left transition-colors md:justify-start md:px-2.5",
+                "flex h-9 w-full items-center justify-center gap-2 rounded-md px-2 text-left text-sm transition-colors md:justify-start md:px-2.5",
                 isActive
-                  ? "bg-default-900 text-background shadow-sm dark:bg-default-100 dark:text-default-900"
-                  : "text-default-600 hover:bg-default-100 dark:text-default-400 dark:hover:bg-default-100/40",
+                  ? "workbench-focus-ring bg-default-200 text-default-900"
+                  : "text-default-600 hover:bg-default-100 hover:text-default-900",
               )}
               onClick={() => onSelect(item.key)}
             >

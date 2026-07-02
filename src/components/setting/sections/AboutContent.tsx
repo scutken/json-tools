@@ -40,7 +40,7 @@ export function AboutContent() {
     <div className="h-full">
       <SectionHeader
         description="了解更多关于应用的信息"
-        title="关于 JSON Tools"
+        title="关于 合社JSON"
       />
 
       {/* 品牌信息 */}
@@ -48,11 +48,11 @@ export function AboutContent() {
         <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-default-100">
-              <img alt="JSON Tools Logo" className="h-8 w-8" src="./logo.png" />
+              <img alt="合社JSON Logo" className="h-8 w-8" src="./logo.png" />
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-semibold text-default-900">
-                JSON Tools
+                合社JSON
               </h3>
               <p className="text-[12px] text-default-500">
                 强大的 JSON 处理工具集，一站式 JSON 开发者工具箱
@@ -116,7 +116,7 @@ export function AboutContent() {
       </div>
 
       <p className="mt-6 text-center text-[12px] text-default-400">
-        © {new Date().getFullYear()} JSON Tools · 基于 React、TypeScript 和
+        © {new Date().getFullYear()} 合社JSON · 基于 React、TypeScript 和
         HeroUI 构建
       </p>
     </div>

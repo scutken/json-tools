@@ -17,8 +17,6 @@ export type MonacoEditorCDN = "local" | "cdn";
 
 // 全局设置状态接口
 export interface SettingsState {
-  // 侧边栏展开状态
-  expandSidebar: boolean;
   // Monaco 编辑器 CDN 配置
   monacoEditorCDN: MonacoEditorCDN;
   // 聊天窗口样式
@@ -39,7 +37,6 @@ export interface SettingsState {
   persistentDataEnabled: boolean;
 
   // Actions
-  setExpandSidebar: (value: boolean) => void;
   setMonacoEditorCDN: (value: MonacoEditorCDN) => void;
   setChatStyle: (value: ChatStyle) => void;
   setFontSize: (value: FontSize) => void;
@@ -60,7 +57,6 @@ export const useSettingsStore = create<SettingsState>()(
     devtools(
       (set) => ({
         // 初始状态
-        expandSidebar: false,
         monacoEditorCDN: "local",
         chatStyle: "bubble",
         fontSize: "medium",
@@ -74,7 +70,6 @@ export const useSettingsStore = create<SettingsState>()(
         persistentDataEnabled: true,
 
         // Actions 实现
-        setExpandSidebar: (value: boolean) => set({ expandSidebar: value }),
         setMonacoEditorCDN: (value: MonacoEditorCDN) =>
           set({ monacoEditorCDN: value }),
         setChatStyle: (value: ChatStyle) => set({ chatStyle: value }),
@@ -121,7 +116,7 @@ useSettingsStore.subscribe(
     clearTimeout(settingsSaveTimeout);
     settingsSaveTimeout = setTimeout(async () => {
       // 只保存数据字段，排除函数（actions）
-      const { setExpandSidebar, setMonacoEditorCDN, setChatStyle, setFontSize, setTimestampDecoderEnabled, setBase64DecoderEnabled, setUnicodeDecoderEnabled, setUrlDecoderEnabled, setDefaultIndentSize, setNewTabShortcut, setCloseTabShortcut, setPersistentDataEnabled, setSettings, syncSettingsStore, ...dataToSave } = settings;
+      const { setMonacoEditorCDN, setChatStyle, setFontSize, setTimestampDecoderEnabled, setBase64DecoderEnabled, setUnicodeDecoderEnabled, setUrlDecoderEnabled, setDefaultIndentSize, setNewTabShortcut, setCloseTabShortcut, setPersistentDataEnabled, setSettings, syncSettingsStore, ...dataToSave } = settings;
       await storageManager.set(DB_SETTINGS, dataToSave);
     }, timeout);
   },

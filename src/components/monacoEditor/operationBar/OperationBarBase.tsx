@@ -149,20 +149,23 @@ export const useAdaptiveButtons = (
 
 // 渲染标准按钮
 export const renderStandardButton = (button: BaseButtonConfig) => {
+  const baseButtonClassName = cn(
+    "workbench-focus-ring h-7 min-w-7 rounded-md px-1.5 text-xs",
+    "text-default-600 hover:bg-default-100 hover:text-default-900",
+    button.className,
+  );
+
   return (
     <Tooltip key={button.key} content={button.tooltip} delay={300}>
       <Button
-        className={cn(
-          "pl-1.5 pr-1.5 h-7 gap-1 text-default-600 transition-colors text-xs",
-          button.className,
-          "hover:bg-default-200/50",
-        )}
+        aria-label={button.tooltip || button.text}
+        className={baseButtonClassName}
         size="sm"
         startContent={
           <Icon
             className={button.iconColor || ""}
             icon={button.icon}
-            width={16}
+            width={15}
           />
         }
         variant="light"
@@ -199,17 +202,18 @@ export const renderDropdownButton = (
         onMouseLeave={unShowDropdown}
       >
         <Button
+          aria-label={button.tooltip || button.text}
           className={cn(
-            "pl-1.5 pr-1.5 h-7 gap-1 text-default-600 transition-colors text-xs",
+            "workbench-focus-ring h-7 min-w-7 rounded-md px-1.5 text-xs",
+            "text-default-600 hover:bg-default-100 hover:text-default-900",
             button.className,
-            "hover:bg-default-200/50",
           )}
           size="sm"
           startContent={
             <Icon
               className={button.iconColor || ""}
               icon={button.icon}
-              width={16}
+              width={15}
             />
           }
           variant="light"
@@ -272,8 +276,9 @@ export const renderMoreMenu = (
         onMouseLeave={unShowMoreDropdown}
       >
         <Button
-          className="pl-1.5 pr-1.5 h-7 gap-1 text-default-600 !min-w-14 hover:bg-default-200/50 transition-colors text-xs"
-          startContent={<Icon icon="mingcute:more-2-fill" width={16} />}
+          aria-label="More"
+          className="workbench-focus-ring h-7 min-w-7 rounded-md px-1.5 text-xs text-default-600 hover:bg-default-100 hover:text-default-900"
+          startContent={<Icon icon="mingcute:more-2-fill" width={15} />}
           variant="light"
         >
           更多

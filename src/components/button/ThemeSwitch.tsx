@@ -47,14 +47,14 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({
       <VisuallyHidden>
         <input {...getInputProps()} />
       </VisuallyHidden>
-      <div className={"w-60"}>
+      <div className={isCollapsed ? "w-9" : "w-60"}>
         {!isSelected ? (
           <Button
             aria-label="日间模式"
             className={cn(
               "justify-start text-default-500 data-[hover=true]:text-foreground w-full",
               {
-                "justify-center": isCollapsed,
+                "workbench-icon-button workbench-focus-ring justify-center": isCollapsed,
               },
             )}
             isIconOnly={isCollapsed}
@@ -90,7 +90,7 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({
             className={cn(
               "justify-start text-default-500 data-[hover=true]:text-foreground w-full",
               {
-                "justify-center": isCollapsed,
+                "workbench-icon-button workbench-focus-ring justify-center": isCollapsed,
               },
             )}
             isIconOnly={isCollapsed}

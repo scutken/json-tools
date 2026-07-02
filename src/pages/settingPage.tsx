@@ -1,5 +1,8 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { Button } from "@heroui/react";
+import { Icon } from "@iconify/react";
+import { useNavigate } from "react-router-dom";
 
 import {
   SettingsSidebar,
@@ -7,7 +10,6 @@ import {
 } from "@/components/setting/SettingsSidebar";
 import { GeneralSettings } from "@/components/setting/sections/GeneralSettings";
 import { ShortcutsSettings } from "@/components/setting/sections/ShortcutsSettings";
-import { AppearanceSettings } from "@/components/setting/sections/AppearanceSettings";
 import { DecoderSettings } from "@/components/setting/sections/DecoderSettings";
 import { AISettings } from "@/components/setting/sections/AISettings";
 import { AboutContent } from "@/components/setting/sections/AboutContent";
@@ -20,9 +22,8 @@ import { AboutContent } from "@/components/setting/sections/AboutContent";
  * 根容器挂在全站 FontSizeLayout 之下，字号随全局 small/medium/large 缩放。
  */
 const MENU_ITEMS: SettingsMenuItem[] = [
-  { key: "general", label: "通用设置", icon: "solar:settings-bold" },
+  { key: "general", label: "编辑器与数据", icon: "solar:settings-bold" },
   { key: "shortcuts", label: "快捷键", icon: "solar:keyboard-bold" },
-  { key: "appearance", label: "外观设置", icon: "catppuccin:folder-themes" },
   { key: "decoders", label: "自动解码", icon: "solar:code-bold" },
   { key: "ai", label: "AI 助手", icon: "hugeicons:ai-chat-02" },
   { key: "about", label: "关于", icon: "solar:info-circle-bold" },
@@ -30,6 +31,7 @@ const MENU_ITEMS: SettingsMenuItem[] = [
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
+  const navigate = useNavigate();
 
   const renderContent = () => {
     switch (activeTab) {
@@ -37,8 +39,6 @@ export default function SettingsPage() {
         return <GeneralSettings />;
       case "shortcuts":
         return <ShortcutsSettings />;
-      case "appearance":
-        return <AppearanceSettings />;
       case "decoders":
         return <DecoderSettings />;
       case "ai":
@@ -51,7 +51,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex h-full w-full min-w-0 flex-1 bg-default-50 dark:bg-default-50/5">
+    <div className="workbench-content flex h-full w-full min-w-0 flex-1">
       <div className="flex h-full w-full min-w-0 flex-row overflow-hidden">
         <SettingsSidebar
           activeTab={activeTab}
@@ -59,11 +59,22 @@ export default function SettingsPage() {
           onSelect={setActiveTab}
         />
 
-        <div className="min-w-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5 md:px-6 md:py-6">
+        <div className="min-w-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 md:px-5 md:py-5">
+          <div className="mx-auto mb-3 flex w-full max-w-[960px] items-center justify-between">
+            <Button
+              className="workbench-focus-ring h-8 rounded-md px-2 text-xs text-default-600 hover:bg-default-100 hover:text-default-900"
+              size="sm"
+              startContent={<Icon icon="solar:arrow-left-linear" width={15} />}
+              variant="light"
+              onPress={() => navigate("/")}
+            >
+              返回编辑器
+            </Button>
+          </div>
           <motion.div
             key={activeTab}
             animate={{ opacity: 1, y: 0 }}
-            className="mx-auto w-full max-w-[960px] pb-8"
+            className="mx-auto flex w-full max-w-[960px] flex-col gap-3 pb-8"
             initial={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >

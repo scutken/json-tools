@@ -1,0 +1,106 @@
+:root {
+  --workbench-bg: hsl(var(--nextui-default-50));
+  --workbench-rail-bg: hsl(var(--nextui-default-100));
+  --workbench-surface: hsl(var(--nextui-content1));
+  --workbench-surface-hover: hsl(var(--nextui-default-100));
+  --workbench-border: hsl(var(--nextui-default-200));
+  --workbench-active: hsl(var(--nextui-default-200));
+  --workbench-accent: hsl(var(--nextui-primary));
+  --workbench-focus: hsl(var(--nextui-primary));
+}
+
+.dark {
+  --workbench-bg: hsl(var(--nextui-background));
+  --workbench-rail-bg: hsl(var(--nextui-default-50) / 0.08);
+  --workbench-surface: hsl(var(--nextui-content1));
+  --workbench-surface-hover: hsl(var(--nextui-default-100) / 0.12);
+  --workbench-border: hsl(var(--nextui-default-200) / 0.2);
+  --workbench-active: hsl(var(--nextui-default-100) / 0.18);
+  --workbench-accent: hsl(var(--nextui-primary));
+  --workbench-focus: hsl(var(--nextui-primary));
+}
+
+.workbench-shell {
+  background: var(--workbench-bg);
+  color: hsl(var(--nextui-foreground));
+}
+
+.workbench-rail {
+  width: 48px;
+  min-width: 48px;
+  background: var(--workbench-rail-bg);
+  border-right: 1px solid var(--workbench-border);
+}
+
+.workbench-surface {
+  background: var(--workbench-surface);
+  border: 1px solid var(--workbench-border);
+  border-radius: 8px;
+}
+
+.workbench-surface-hover {
+  background: var(--workbench-surface-hover);
+}
+
+.workbench-border {
+  border-color: var(--workbench-border);
+}
+
+.workbench-toolbar {
+  min-height: 32px;
+  background: var(--workbench-surface);
+  border-bottom: 1px solid var(--workbench-border);
+}
+
+.workbench-tabbar {
+  min-height: 32px;
+  background: var(--workbench-surface);
+  border-bottom: 1px solid var(--workbench-border);
+}
+
+.workbench-header {
+  min-height: 34px;
+}
+
+.workbench-header-controls {
+  max-width: min(620px, 58vw);
+}
+
+.workbench-bottom-bar {
+  min-height: 34px;
+}
+
+.workbench-content {
+  min-width: 0;
+  min-height: 0;
+  background: var(--workbench-bg);
+}
+
+.workbench-icon-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  color: hsl(var(--nextui-default-600));
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.workbench-icon-button:hover {
+  background: var(--workbench-surface-hover);
+  color: hsl(var(--nextui-foreground));
+}
+
+.workbench-icon-button[data-active="true"] {
+  background: var(--workbench-active);
+  color: hsl(var(--nextui-foreground));
+}
+
+.workbench-focus-ring:focus-visible {
+  outline: 2px solid var(--workbench-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workbench-icon-button {
+    transition: none;
+  }
+}

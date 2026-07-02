@@ -39,12 +39,12 @@ interface SectionHeaderProps {
 /** 每个 tab 顶部的统一标题（无图标块，纯文字，更克制） */
 export function SectionHeader({ title, description }: SectionHeaderProps) {
   return (
-    <div className="mb-5">
-      <h2 className="text-lg font-semibold tracking-normal text-default-900 sm:text-xl">
+    <div className="mb-4">
+      <h2 className="text-[15px] font-semibold text-default-900">
         {title}
       </h2>
       {description ? (
-        <p className="mt-1 text-[12.5px] leading-relaxed text-default-500 sm:text-[13px]">
+        <p className="mt-1 text-sm text-default-500">
           {description}
         </p>
       ) : null}
@@ -83,7 +83,7 @@ export function SectionCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-default-200/70 bg-background shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:bg-default-50/30",
+        "workbench-surface overflow-hidden rounded-lg border border-default-200/70 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:bg-default-50/30",
         divided && "divide-y divide-default-200/60",
         className,
       )}
@@ -115,7 +115,7 @@ export function SettingRow({
   return (
     <div
       className={cn(
-        "flex min-h-[60px] flex-col gap-3 px-3 py-3 transition-colors hover:bg-default-50/80 sm:flex-row sm:items-center sm:justify-between sm:px-4",
+        "flex min-h-[60px] flex-col gap-3 transition-colors hover:bg-default-50/80 sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
     >
@@ -165,7 +165,7 @@ export function InfoNote({
   return (
     <div
       className={cn(
-        "mx-3 my-3 flex items-start gap-3 rounded-lg border p-3 sm:mx-4",
+        "my-3 flex items-start gap-3 rounded-lg border p-3",
         tone === "warning"
           ? "border-warning/20 bg-warning/10"
           : tone === "primary"

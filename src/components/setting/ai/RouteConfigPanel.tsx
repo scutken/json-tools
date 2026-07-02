@@ -2,18 +2,15 @@ import type { ReactNode } from "react";
 
 import { Button, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { useState } from "react";
 
 import { ROUTE_LABEL } from "./aiRoutes";
 import { ModelListTable } from "./ModelListTable";
 import { TestConnectionBar, type TestResult } from "./TestConnection";
-import { FormField, InlineCode } from "../settingPrimitives";
+import { FormField } from "../settingPrimitives";
 
 import SearchableSelect from "@/components/SearchableSelect/SearchableSelect.tsx";
-import ExternalLink from "@/components/ExternalLink";
-import {
-  useOpenAIConfigStore,
-  type AIRouteType,
-} from "@/store/useOpenAIConfigStore";
+import { useOpenAIConfigStore, type AIRouteType } from "@/store/useOpenAIConfigStore";
 
 interface RouteConfigPanelProps {
   routeType: AIRouteType;
@@ -21,30 +18,23 @@ interface RouteConfigPanelProps {
   testing: boolean;
   testResult: TestResult | null;
   testModelUtools: string;
-  testModelSsooai: string;
   testModelCustom: string;
-  onSetTestModel: (
-    route: "utools" | "ssooai" | "custom",
-    value: string,
-  ) => void;
+  onSetTestModel: (route: "utools" | "custom", value: string) => void;
   onTest: (routeType: AIRouteType, model?: string) => void;
-  onConfigureApiKey: (route: "ssooai" | "custom", apiKey: string) => void;
+  onConfigureApiKey: (apiKey: string) => void;
   onConfigureProxyUrl: (proxyUrl: string) => void;
   onConfigureUtoolsModel: (model: string) => void;
-  onRefreshSsooaiModels: () => void;
+  onAddCustomModel: (model: string, label?: string) => void;
   onRefreshCustomModels: () => void;
-  onAddModel: (mode: "ssooai" | "custom") => void;
-  onRemoveSsooaiModel: (value: string) => void;
   onRemoveCustomModel: (value: string) => void;
   onClose: () => void;
 }
 
 /**
- * 线路配置面板：按 routeType 分发渲染四类配置。
- * 数据从 useOpenAIConfigStore 读取；写操作与测试由 AISettings 下传回调。
+ * 线路配置面板：按 routeType 分发渲染。
  */
 export function RouteConfigPanel(props: RouteConfigPanelProps) {
-  const { routeType, onClose, testing, testResult, onTest } = props;
+  const { routeType, onClose } = props;
 
   return (
     <div className="space-y-5">
@@ -68,14 +58,6 @@ export function RouteConfigPanel(props: RouteConfigPanelProps) {
         </Button>
       </div>
 
-      {routeType === "default" && (
-        <DefaultRouteConfig
-          testResult={testResult}
-          testing={testing}
-          onTest={() => onTest("default")}
-        />
-      )}
-      {routeType === "ssooai" && <SsooaiRouteConfig {...props} />}
       {routeType === "utools" && props.isUtoolsAvailable && (
         <UtoolsRouteConfig {...props} />
       )}
@@ -86,120 +68,6 @@ export function RouteConfigPanel(props: RouteConfigPanelProps) {
 
 function ConfigSection({ children }: { children: ReactNode }) {
   return <div className="space-y-4">{children}</div>;
-}
-
-function PromoBanner() {
-  return (
-    <div className="rounded-lg border border-primary/20 bg-primary/10 p-3">
-      <div className="flex items-center gap-2.5">
-        <Icon className="text-primary" icon="solar:star-bold" width={20} />
-        <span className="text-[13px] font-medium text-primary">
-          SSOOAI API 服务
-        </span>
-      </div>
-      <p className="mt-2 text-xs text-default-700">
-        SSOOAI 提供更稳定的 API 服务和多种先进模型。 访问{" "}
-        <ExternalLink
-          className="font-medium text-primary hover:underline"
-          href="https://api.ssooai.com"
-        >
-          https://api.ssooai.com
-        </ExternalLink>{" "}
-        注册并获取 API 密钥。
-      </p>
-    </div>
-  );
-}
-
-function DefaultRouteConfig({
-  onTest,
-  testing,
-  testResult,
-}: {
-  onTest: () => void;
-  testing: boolean;
-  testResult: TestResult | null;
-}) {
-  return (
-    <ConfigSection>
-      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-default-600">
-        <Icon className="text-primary" icon="solar:star-bold" width={18} />
-        默认模型: <span className="font-medium">DeepSeek V4 Pro</span>
-        <span className="text-xs text-primary">
-          (由{" "}
-          <ExternalLink
-            className="text-primary hover:underline"
-            href="https://api.ssooai.com"
-          >
-            SSOOAI
-          </ExternalLink>{" "}
-          提供)
-        </span>
-      </div>
-      <TestConnectionBar
-        disabled={false}
-        result={testResult}
-        testing={testing}
-        onTest={onTest}
-      />
-    </ConfigSection>
-  );
-}
-
-function SsooaiRouteConfig(props: RouteConfigPanelProps) {
-  const { ssooaiRoute, ssooaiModels } = useOpenAIConfigStore();
-  const {
-    testing,
-    testResult,
-    testModelSsooai,
-    onSetTestModel,
-    onTest,
-    onConfigureApiKey,
-    onRefreshSsooaiModels,
-    onAddModel,
-    onRemoveSsooaiModel,
-  } = props;
-
-  return (
-    <ConfigSection>
-      <PromoBanner />
-
-      <FormField id="ssooai-api-key" icon="solar:key-bold" label="API 密钥">
-        <Input
-          className="w-full"
-          id="ssooai-api-key"
-          placeholder="输入您的 SSOOAI API 密钥"
-          size="sm"
-          type="password"
-          value={ssooaiRoute.apiKey}
-          variant="bordered"
-          onChange={(e) => onConfigureApiKey("ssooai", e.target.value)}
-        />
-      </FormField>
-
-      <TestConnectionBar
-        disabled={testing || !ssooaiRoute.apiKey || !testModelSsooai}
-        result={testResult}
-        testing={testing}
-        onTest={() => onTest("ssooai", testModelSsooai)}
-      >
-        <SearchableSelect
-          className="w-full sm:w-60"
-          items={ssooaiModels}
-          placeholder="选择模型"
-          selectedValue={testModelSsooai}
-          onChange={(value) => onSetTestModel("ssooai", value)}
-        />
-      </TestConnectionBar>
-
-      <ModelListTable
-        models={ssooaiModels}
-        onAdd={() => onAddModel("ssooai")}
-        onRefresh={onRefreshSsooaiModels}
-        onRemove={onRemoveSsooaiModel}
-      />
-    </ConfigSection>
-  );
 }
 
 function UtoolsRouteConfig(props: RouteConfigPanelProps) {
@@ -251,10 +119,7 @@ function UtoolsRouteConfig(props: RouteConfigPanelProps) {
           />
           <span className="font-medium">提示</span>
         </div>
-        <p className="ml-6 mt-1">
-          Utools 官方线路由 Utools
-          团队维护，提供更稳定的服务和更多模型选择，但需要付费使用。
-        </p>
+        <p className="ml-6 mt-1">uTools AI 线路由 uTools 环境提供，适合本地使用。</p>
       </div>
     </ConfigSection>
   );
@@ -270,10 +135,21 @@ function CustomRouteConfig(props: RouteConfigPanelProps) {
     onTest,
     onConfigureApiKey,
     onConfigureProxyUrl,
+    onAddCustomModel,
     onRefreshCustomModels,
-    onAddModel,
     onRemoveCustomModel,
   } = props;
+  const [manualModel, setManualModel] = useState("");
+  const [manualLabel, setManualLabel] = useState("");
+
+  const addManualModel = () => {
+    const model = manualModel.trim();
+
+    if (!model) return;
+    onAddCustomModel(model, manualLabel.trim() || undefined);
+    setManualModel("");
+    setManualLabel("");
+  };
 
   return (
     <ConfigSection>
@@ -284,12 +160,10 @@ function CustomRouteConfig(props: RouteConfigPanelProps) {
             icon="solar:bookmark-square-bold"
             width={20}
           />
-          <span className="font-medium">SSOOAI API</span>
+          <span className="font-medium">私有线路</span>
         </div>
         <p className="mt-2 text-xs text-default-700">
-          推荐使用 SSOOAI API 作为私有线路，填入 API 地址：
-          <InlineCode>https://api.ssooai.com/v1</InlineCode>
-          ，注册即可获得免费额度。高稳定性、低延迟、更实惠的价格。
+          填入你自己的 API 地址和密钥，连接私有模型服务。
         </p>
       </div>
 
@@ -297,7 +171,7 @@ function CustomRouteConfig(props: RouteConfigPanelProps) {
         <Input
           className="w-full"
           id="api-url"
-          placeholder="输入 API 地址，例如: https://api.ssooai.com/v1"
+          placeholder="输入 API 地址，例如: https://your-private-endpoint/v1"
           size="sm"
           value={customRoute.proxyUrl}
           variant="bordered"
@@ -314,17 +188,12 @@ function CustomRouteConfig(props: RouteConfigPanelProps) {
           type="password"
           value={customRoute.apiKey}
           variant="bordered"
-          onChange={(e) => onConfigureApiKey("custom", e.target.value)}
+          onChange={(e) => onConfigureApiKey(e.target.value)}
         />
       </FormField>
 
       <TestConnectionBar
-        disabled={
-          testing ||
-          !customRoute.apiKey ||
-          !customRoute.proxyUrl ||
-          !testModelCustom
-        }
+        disabled={testing || !customRoute.apiKey || !customRoute.proxyUrl || !testModelCustom}
         result={testResult}
         testing={testing}
         onTest={() => onTest("custom", testModelCustom)}
@@ -338,9 +207,38 @@ function CustomRouteConfig(props: RouteConfigPanelProps) {
         />
       </TestConnectionBar>
 
+      <div className="grid grid-cols-1 gap-2 rounded-lg border border-default-200 bg-default-50/60 p-3 sm:grid-cols-[1fr_1fr_auto]">
+        <Input
+          aria-label="模型名称"
+          placeholder="手动输入模型名称，例如 gpt-4o"
+          size="sm"
+          value={manualModel}
+          variant="bordered"
+          onChange={(e) => setManualModel(e.target.value)}
+        />
+        <Input
+          aria-label="显示名称"
+          placeholder="显示名称，可选"
+          size="sm"
+          value={manualLabel}
+          variant="bordered"
+          onChange={(e) => setManualLabel(e.target.value)}
+        />
+        <Button
+          color="primary"
+          isDisabled={!manualModel.trim()}
+          radius="full"
+          size="sm"
+          startContent={<Icon icon="solar:add-circle-bold" width={16} />}
+          onPress={addManualModel}
+        >
+          添加
+        </Button>
+      </div>
+
       <ModelListTable
         models={customModels}
-        onAdd={() => onAddModel("custom")}
+        onAdd={() => addManualModel()}
         onRefresh={onRefreshCustomModels}
         onRemove={onRemoveCustomModel}
       />

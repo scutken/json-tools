@@ -16,7 +16,6 @@ import toast from "@/utils/toast";
 import { MonacoDiffEditorEditorType } from "@/components/monacoEditor/monacoEntity";
 import { sortJson, parseJson, stringifyJson } from "@/utils/json";
 import { useTabStore } from "@/store/useTabStore";
-import DraggableMenu from "@/components/monacoEditor/DraggableMenu.tsx";
 import AIPromptOverlay, { QuickPrompt } from "@/components/ai/AIPromptOverlay";
 import PromptContainer, {
   PromptContainerRef,
@@ -154,11 +153,9 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
   };
 
   // 菜单状态
-  const [currentLanguage, setCurrentLanguage] = useState(
-    editorSettings.language,
-  );
-  const [fontSize, setFontSize] = useState(editorSettings.fontSize);
-  const [indentSize, setIndentSize] = useState(editorSettings.indentSize || 4);
+  const [currentLanguage] = useState(editorSettings.language);
+  const [fontSize] = useState(editorSettings.fontSize);
+  const [indentSize] = useState(editorSettings.indentSize || 4);
 
   // AI相关状态
   const [showAiPrompt, setShowAiPrompt] = useState(false);
@@ -2118,55 +2115,6 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
           transition: isDragging ? "none" : "height 0.3s ease-out",
         }}
       >
-        {/* 添加 DraggableMenu 组件 */}
-        <DraggableMenu
-          base64DecoratorsEnabled={base64DecoratorsEnabled}
-          containerRef={editorContainerRef}
-          currentFontSize={fontSize}
-          currentIndentSize={indentSize}
-          currentLanguage={currentLanguage}
-          imageDecoratorsEnabled={imageDecoratorsEnabled}
-          tabKey={tabKey}
-          timestampDecoratorsEnabled={timestampDecoratorsEnabled}
-          unicodeDecoratorsEnabled={unicodeDecoratorsEnabled}
-          urlDecoratorsEnabled={urlDecoratorsEnabled}
-          onBase64DecoratorsChange={(enabled) => {
-            setBase64DecoratorsEnabled(enabled);
-          }}
-          onFontSizeChange={setFontSize}
-          onImageDecoratorsChange={(enabled) => {
-            setImageDecoratorsEnabled(enabled);
-            // 调用ref方法来切换图片装饰器
-            if (ref && typeof ref !== "function" && ref.current) {
-              ref.current.toggleImageDecorators(enabled);
-            }
-          }}
-          onIndentSizeChange={setIndentSize}
-          onLanguageChange={setCurrentLanguage}
-          onReset={() => {
-            setFontSize(14);
-            setIndentSize(4);
-            setCurrentLanguage("json");
-            // 重置时也启用时间戳装饰器
-            setTimestampDecoratorsEnabled(true);
-            if (ref && typeof ref !== "function" && ref.current) {
-              ref.current.toggleTimestampDecorators(true);
-            }
-          }}
-          onTimestampDecoratorsChange={(enabled) => {
-            setTimestampDecoratorsEnabled(enabled);
-            // 调用ref方法来切换时间戳装饰器
-            if (ref && typeof ref !== "function" && ref.current) {
-              ref.current.toggleTimestampDecorators(enabled);
-            }
-          }}
-          onUnicodeDecoratorsChange={(enabled) => {
-            setUnicodeDecoratorsEnabled(enabled);
-          }}
-          onUrlDecoratorsChange={(enabled) => {
-            setUrlDecoratorsEnabled(enabled);
-          }}
-        />
       </div>
 
       {/* AI响应面板 - 从底部推出 */}
