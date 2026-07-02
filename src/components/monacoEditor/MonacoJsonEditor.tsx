@@ -14,8 +14,6 @@ import { Icon } from "@iconify/react";
 import JSON5 from "json5";
 import { jsonquery } from "@jsonquerylang/jsonquery";
 
-import { AIResultHeader } from "./AIResultHeader";
-
 import UtoolsListener from "@/services/utoolsListener";
 import toast from "@/utils/toast";
 import { useTabStore } from "@/store/useTabStore";
@@ -81,10 +79,10 @@ import {
 import "@/styles/monaco.css";
 import ErrorModal from "@/components/monacoEditor/ErrorModal.tsx";
 import DraggableMenu from "@/components/monacoEditor/DraggableMenu.tsx";
-import AIPromptOverlay, { QuickPrompt } from "@/components/ai/AIPromptOverlay";
-import PromptContainer, {
-  PromptContainerRef,
-} from "@/components/ai/PromptContainer";
+import AIAssistantSidebar, {
+  AIAssistantSidebarRef,
+  QuickPrompt,
+} from "@/components/ai/AIAssistantSidebar";
 import { jsonQuickPrompts } from "@/components/ai/JsonQuickPrompts.tsx";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import JsonQueryHelp from "@/components/monacoEditor/JsonQueryHelp";
@@ -148,7 +146,7 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
 }) => {
   const getTabByKey = useTabStore.getState().getTabByKey;
   const updateEditorSettings = useTabStore.getState().updateEditorSettings;
-  const errorBottomHeight = 45; // 底部错误详情弹窗的高度
+  const errorBottomHeight = 48; // 底部错误诊断条的预留高度
   const containerRef = useRef<HTMLDivElement>(null);
   const rootContainerRef = useRef<HTMLDivElement>(null); // 根容器引用
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -297,12 +295,11 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
   };
 
   // AI相关状态
-  const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [showAiResponse, setShowAiResponse] = useState(false);
 
-  // 添加一个引用以便访问PromptContainer组件的方法
-  const promptContainerRef = useRef<PromptContainerRef>(null);
+  // 添加一个引用以便访问侧边栏内PromptContainer组件的方法
+  const assistantSidebarRef = useRef<AIAssistantSidebarRef>(null);
 
   // 为PromptContainer组件准备消息数组
   const [aiMessages, setAiMessages] = useState<
@@ -498,17 +495,7 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
       return;
     }
 
-    setShowAiPrompt(false);
     setShowAiResponse(true);
-
-    // 添加用户消息到消息数组
-    const userMessage = {
-      role: "user" as const,
-      content: aiPrompt,
-      timestamp: Date.now(),
-    };
-
-    setAiMessages([userMessage]);
 
     // 保存prompt内容用于稍后发送
     const promptToSend = aiPrompt;
@@ -521,13 +508,18 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
 
       // 使用setTimeout确保PromptContainer组件已经挂载并初始化
       setTimeout(() => {
-        // 直接触发PromptContainer的sendMessage方法
-        if (promptContainerRef.current) {
-          promptContainerRef.current.sendMessage(promptToSend);
+        // 直接触发侧边栏内PromptContainer的sendMessage方法
+        if (assistantSidebarRef.current) {
+          assistantSidebarRef.current.sendMessage(promptToSend);
         } else {
           // 如果还没有获取到ref，添加一个思考中的消息
           setAiMessages((prev) => [
             ...prev,
+            {
+              role: "user",
+              content: promptToSend,
+              timestamp: Date.now(),
+            },
             {
               role: "assistant",
               content: "思考中...",
@@ -544,6 +536,7 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     setShowAiResponse(false);
     // 清空消息历史
     setAiMessages([]);
+    setAiPrompt("");
 
     // 布局调整
     setTimeout(() => {
@@ -1342,6 +1335,12 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     showAiPrompt: () => {
       const val = editorRef.current?.getValue() || "";
 
+      if (showAiResponse) {
+        closeAiResponse();
+
+        return false;
+      }
+
       if (val.trim() === "") {
         toast.error("编辑器内容为空，请先输入内容");
 
@@ -1349,7 +1348,12 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
       }
 
       setCurrentEditorValue(val);
-      setShowAiPrompt(true);
+      setAiPrompt("");
+      setAiMessages([]);
+      setShowAiResponse(true);
+      setTimeout(() => {
+        editorRef.current?.layout();
+      }, 0);
 
       return true;
     },
@@ -1979,34 +1983,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
       className="flex flex-col relative w-full h-full"
       style={{ height }}
     >
-      <AIPromptOverlay
-        isOpen={showAiPrompt}
-        placeholderText="输入您的问题..."
-        prompt={aiPrompt}
-        quickPrompts={finalQuickPrompts}
-        onClose={() => setShowAiPrompt(false)}
-        onPromptChange={setAiPrompt}
-        onQuickPromptClick={(qp) => {
-          if (qp.id === "convert_to_snake_case") {
-            try {
-              const editorValue = editorRef.current?.getValue() || "";
-              const converted = convertKeysToSnakeCase(editorValue);
-
-              editorRef.current?.setValue(converted);
-              setShowAiPrompt(false);
-              toast.success("已将所有字段名转换为 snake_case");
-            } catch {
-              toast.error("转换失败，请检查 JSON 格式是否正确");
-            }
-
-            return;
-          }
-          // 其他按钮走默认行为：填充 AI 提示
-          setAiPrompt(qp.prompt);
-        }}
-        onSubmit={handleAiSubmit}
-      />
-
       <div
         className={cn(
           "w-full h-full overflow-hidden",
@@ -2047,21 +2023,37 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
               className="h-full overflow-hidden flex flex-col bg-white/95 dark:bg-neutral-900/95 ai-panel"
               style={{ width: `calc(40% + ${aiPanelWidth}px)` }}
             >
-              {/* AI标题栏 */}
-              <AIResultHeader onClose={handleCloseAiResponse} />
+              <AIAssistantSidebar
+                ref={assistantSidebarRef}
+                editorContent={currentEditorValue}
+                isOpen={showAiResponse}
+                messages={aiMessages}
+                placeholderText="输入您的问题..."
+                prompt={aiPrompt}
+                quickPrompts={finalQuickPrompts}
+                onApplyCode={handleApplyCode}
+                onClose={handleCloseAiResponse}
+                onPromptChange={setAiPrompt}
+                onQuickPromptClick={(qp) => {
+                  if (qp.id === "convert_to_snake_case") {
+                    try {
+                      const editorValue = editorRef.current?.getValue() || "";
+                      const converted = convertKeysToSnakeCase(editorValue);
 
-              {/* AI面板 */}
-              <div className="flex-1 h-full overflow-hidden">
-                <PromptContainer
-                  ref={promptContainerRef}
-                  className="h-full"
-                  editorContent={currentEditorValue}
-                  initialMessages={aiMessages}
-                  showAttachButtons={false}
-                  useDirectApi={true}
-                  onApplyCode={handleApplyCode}
-                />
-              </div>
+                      editorRef.current?.setValue(converted);
+                      closeAiResponse();
+                      toast.success("已将所有字段名转换为 snake_case");
+                    } catch {
+                      toast.error("转换失败，请检查 JSON 格式是否正确");
+                    }
+
+                    return;
+                  }
+
+                  setAiPrompt(qp.prompt);
+                }}
+                onSubmit={handleAiSubmit}
+              />
             </div>
           </>
         ) : showFilterEditor ? (
@@ -2238,48 +2230,59 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
 
       {parseJsonError && (
         <div
-          className="flex justify-between items-center px-3 text-white text-base transition-all duration-300 shadow-lg"
+          className="border-t border-danger-200/80 bg-danger-50/95 px-2.5 py-1.5 text-danger-950 shadow-[0_-1px_0_rgba(255,255,255,0.35),0_-8px_24px_rgba(244,63,94,0.12)] backdrop-blur-sm transition-all duration-300 dark:border-danger-900/60 dark:bg-danger-950/35 dark:text-danger-50 sm:px-3"
           style={{
             height: errorBottomHeight,
-            backgroundColor: "#ED5241",
             overflow: "hidden",
           }}
         >
-          <div className="flex items-center space-x-3">
-            <Icon icon="fluent:warning-28-filled" width={24} />
-            <p className="">
-              第 {parseJsonError?.line || 0} 行，第{" "}
-              {parseJsonError?.column || 0} 列错误， {parseJsonError?.message}
-            </p>
-          </div>
-          <div className={"flex items-center space-x-2"}>
-            <Button
-              className="bg-white/20"
-              color="primary"
-              size="sm"
-              startContent={<Icon icon="hugeicons:view" width={16} />}
-              onPress={openJsonErrorDetailsModel}
-            >
-              查看详情
-            </Button>
-            <Button
-              className="bg-white/20"
-              color="primary"
-              size="sm"
-              startContent={<Icon icon="mynaui:tool" width={16} />}
-              onPress={autoFix}
-            >
-              自动修复
-            </Button>
-            <Button
-              className="bg-white/20"
-              color="primary"
-              size="sm"
-              startContent={<Icon icon="mingcute:location-line" width={16} />}
-              onPress={goToErrorLine}
-            >
-              一键定位
-            </Button>
+          <div className="flex h-full min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-danger-100 text-danger-600 shadow-sm dark:bg-danger-900/60 dark:text-danger-200">
+                <Icon icon="fluent:warning-28-filled" width={16} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold leading-4 text-danger-900 dark:text-danger-50">
+                  JSON 解析失败
+                </div>
+                <p className="truncate text-[12px] leading-4 text-danger-700 dark:text-danger-200/85">
+                  第 {parseJsonError?.line || 0} 行，第{" "}
+                  {parseJsonError?.column || 0} 列：{parseJsonError?.message}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center justify-end gap-1">
+              <Button
+                className="h-7 min-w-0 shrink-0 whitespace-nowrap px-2 text-[12px] font-medium shadow-sm"
+                color="danger"
+                size="sm"
+                startContent={<Icon icon="mingcute:location-line" width={13} />}
+                onPress={goToErrorLine}
+                variant="solid"
+              >
+                定位
+              </Button>
+              <Button
+                className="h-7 min-w-0 shrink-0 whitespace-nowrap border-danger-200/70 px-2 text-[12px] font-medium text-danger-700 dark:border-danger-900/60 dark:text-danger-100"
+                color="danger"
+                size="sm"
+                startContent={<Icon icon="mynaui:tool" width={13} />}
+                onPress={autoFix}
+                variant="flat"
+              >
+                修复
+              </Button>
+              <Button
+                className="h-7 min-w-0 shrink-0 whitespace-nowrap px-2 text-[12px] font-medium text-danger-700 dark:text-danger-100"
+                color="danger"
+                size="sm"
+                startContent={<Icon icon="hugeicons:view" width={13} />}
+                onPress={openJsonErrorDetailsModel}
+                variant="light"
+              >
+                详情
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -11,10 +11,9 @@
       "cmds": [
         "json",
         "合社JSON",
-        "格式化",
         {
           "type": "regex",
-          "label": "Json 格式化",
+          "label": "Json",
           "match": "/^\\s*(\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\])\\s*$/i",
           "minLength": 2
         }

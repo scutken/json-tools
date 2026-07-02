@@ -1,7 +1,5 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Button } from "@heroui/react";
-import { Icon } from "@iconify/react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -56,21 +54,11 @@ export default function SettingsPage() {
         <SettingsSidebar
           activeTab={activeTab}
           items={MENU_ITEMS}
+          onBack={() => navigate("/")}
           onSelect={setActiveTab}
         />
 
         <div className="min-w-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 md:px-5 md:py-5">
-          <div className="mx-auto mb-3 flex w-full max-w-[960px] items-center justify-between">
-            <Button
-              className="workbench-focus-ring h-8 rounded-md px-2 text-xs text-default-600 hover:bg-default-100 hover:text-default-900"
-              size="sm"
-              startContent={<Icon icon="solar:arrow-left-linear" width={15} />}
-              variant="light"
-              onPress={() => navigate("/")}
-            >
-              返回编辑器
-            </Button>
-          </div>
           <motion.div
             key={activeTab}
             animate={{ opacity: 1, y: 0 }}

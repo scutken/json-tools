@@ -11,6 +11,7 @@ export interface SettingsMenuItem {
 interface SettingsSidebarProps {
   items: SettingsMenuItem[];
   activeTab: string;
+  onBack: () => void;
   onSelect: (key: string) => void;
 }
 
@@ -22,8 +23,27 @@ interface SettingsSidebarProps {
 export function SettingsSidebar({
   items,
   activeTab,
+  onBack,
   onSelect,
 }: SettingsSidebarProps) {
+  const backButton = (
+    <button
+      aria-label="返回编辑器"
+      className="workbench-focus-ring flex h-8 w-full items-center justify-center gap-2 rounded-md px-2 text-left text-default-600 transition-colors hover:bg-default-100 hover:text-default-900 md:justify-start md:px-2.5"
+      type="button"
+      onClick={onBack}
+    >
+      <Icon
+        className="flex-shrink-0"
+        icon="solar:arrow-left-linear"
+        width={16}
+      />
+      <span className="hidden truncate text-[12px] font-medium md:inline">
+        返回编辑器
+      </span>
+    </button>
+  );
+
   return (
     <div className="flex h-full w-[60px] flex-shrink-0 flex-col border-r border-default-200/70 bg-background/80 backdrop-blur-md dark:bg-default-50/20 md:w-[188px]">
       {/* 标题区 */}
@@ -69,6 +89,17 @@ export function SettingsSidebar({
           );
         })}
       </nav>
+
+      <div className="mt-auto border-t border-default-200/70 p-2 md:p-2.5">
+        <Tooltip
+          className="md:hidden"
+          content="返回编辑器"
+          delay={200}
+          placement="right"
+        >
+          {backButton}
+        </Tooltip>
+      </div>
     </div>
   );
 }

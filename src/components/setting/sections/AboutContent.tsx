@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 
-import { GroupLabel, SectionCard, SectionHeader } from "../settingPrimitives";
+import { SectionHeader } from "../settingPrimitives";
 
 import ExternalLink from "@/components/ExternalLink";
 import pkg from "@/../package.json";
@@ -8,117 +8,137 @@ import pkg from "@/../package.json";
 const APP_VERSION = `v${pkg.version}`;
 
 const FEATURES = [
-  { label: "JSON 格式化与验证", icon: "solar:check-circle-bold" },
-  { label: "智能 AI 辅助修复", icon: "solar:check-circle-bold" },
-  { label: "数据格式转换", icon: "solar:check-circle-bold" },
+  {
+    label: "JSON 格式化与验证",
+    icon: "solar:check-circle-bold",
+    note: "稳定输出 · 快速校验",
+    tone: "from-primary/10 via-primary/5 to-background border-primary/20 text-primary",
+  },
+  {
+    label: "AI 修复",
+    icon: "solar:magic-stick-3-bold",
+    note: "自动补全 · 降低返工",
+    tone: "from-success/10 via-success/5 to-background border-success/20 text-success",
+  },
+  {
+    label: "格式转换",
+    icon: "solar:shuffle-bold",
+    note: "类型互转 · 结构整理",
+    tone: "from-warning/10 via-warning/5 to-background border-warning/20 text-warning",
+  },
 ];
 
 const LINKS = [
   {
-    href: "https://github.com/fevrax/json-tools",
+    href: "https://github.com/scutken/json-tools",
     icon: "mdi:github",
-    label: "GitHub 仓库",
+    label: "项目仓库",
+    note: "scutken/json-tools",
   },
   {
-    href: "https://github.com/fevrax/json-tools/issues",
+    href: "https://github.com/scutken/json-tools/issues",
     icon: "solar:chat-square-code-bold",
     label: "问题反馈",
+    note: "提交问题与建议",
   },
   {
-    href: "https://github.com/fevrax/json-tools",
+    href: "https://github.com/scutken/json-tools#readme",
     icon: "solar:document-bold",
-    label: "使用文档",
+    label: "项目文档",
+    note: "查看 README",
   },
 ];
 
-/**
- * 关于页（Apple 系统风 · 居中 Hero + 双列）。
- * 放宽宽度限制：根容器 max-w-5xl，内容用 grid 充分利用横向空间。
- */
 export function AboutContent() {
+  const currentYear = new Date().getFullYear();
+
   return (
-    <div className="h-full">
+    <div className="h-full space-y-4">
       <SectionHeader
-        description="了解更多关于应用的信息"
+        description="轻量、专注的 JSON 工作台"
         title="关于 合社JSON"
       />
 
-      {/* 品牌信息 */}
-      <SectionCard className="mb-5">
-        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-default-100">
-              <img alt="合社JSON Logo" className="h-8 w-8" src="./logo.png" />
+      <section className="workbench-surface overflow-hidden rounded-lg border border-default-200/70 px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:bg-default-50/30 sm:px-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-lg border border-default-200 bg-default-100 shadow-sm dark:border-default-700/60 dark:bg-default-200/30">
+              <img alt="合社JSON Logo" className="h-9 w-9" src="./logo.png" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-base font-semibold text-default-900">
-                合社JSON
-              </h3>
-              <p className="text-[12px] text-default-500">
-                强大的 JSON 处理工具集，一站式 JSON 开发者工具箱
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-[18px] font-semibold leading-6 text-default-900">
+                  合社JSON
+                </h3>
+                <span className="rounded-full border border-default-200 bg-default-50 px-2.5 py-0.5 text-[11px] font-medium text-default-600 dark:border-default-700 dark:bg-default-100/40 dark:text-default-500">
+                  {APP_VERSION}
+                </span>
+              </div>
+              <p className="mt-1 max-w-2xl text-[13px] leading-5 text-default-500">
+                面向 JSON 校验、修复与转换的轻量工具页，保留专注的工作台手感。
               </p>
             </div>
           </div>
-          <span className="w-fit rounded-full border border-default-200 px-2.5 py-1 text-xs font-medium text-default-600">
-            {APP_VERSION}
-          </span>
         </div>
-      </SectionCard>
+      </section>
 
-      {/* 双列：功能特点 + 技术支持 */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <div>
-          <GroupLabel>功能特点</GroupLabel>
-          <SectionCard divided>
-            {FEATURES.map((f) => (
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {FEATURES.map((feature) => (
+          <div
+            key={feature.label}
+            className="rounded-lg border border-default-200/70 bg-background p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-default-700/60 dark:bg-default-50/30"
+          >
+            <div className="flex items-start gap-3">
               <div
-                key={f.label}
-                className="flex items-center gap-3 px-3 py-3 sm:px-4"
+                className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border bg-gradient-to-br ${feature.tone}`}
               >
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-success text-white">
-                  <Icon icon={f.icon} width={18} />
-                </div>
-                <span className="text-[13px] font-medium text-default-900">
-                  {f.label}
-                </span>
+                <Icon icon={feature.icon} width={18} />
               </div>
-            ))}
-          </SectionCard>
-        </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-default-900">
+                  {feature.label}
+                </p>
+                <p className="mt-1 text-[12px] leading-5 text-default-500">
+                  {feature.note}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </section>
 
-        <div>
-          <GroupLabel>技术支持</GroupLabel>
-          <SectionCard divided>
-            {LINKS.map((l) => (
-              <ExternalLink
-                key={l.label}
-                showUrl
-                className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-default-50/80 sm:px-4"
-                href={l.href}
-              >
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-default-100 text-default-700">
-                  <Icon icon={l.icon} width={18} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-medium text-default-900">
-                    {l.label}
-                  </span>
-                </div>
-                <Icon
-                  className="flex-shrink-0 text-default-400"
-                  icon="solar:arrow-right-linear"
-                  width={16}
-                />
-              </ExternalLink>
-            ))}
-          </SectionCard>
-        </div>
-      </div>
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {LINKS.map((link) => (
+          <ExternalLink
+            key={link.label}
+            className="group rounded-lg border border-default-200/70 bg-background p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-default-300 hover:bg-default-50/70 dark:border-default-700/60 dark:bg-default-50/30 dark:hover:border-default-600"
+            href={link.href}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-default-200 bg-default-100 text-default-700 dark:border-default-700 dark:bg-default-100/50 dark:text-default-200">
+                <Icon icon={link.icon} width={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-default-900">
+                  {link.label}
+                </p>
+                <p className="mt-1 text-[12px] leading-5 text-default-500">
+                  {link.note}
+                </p>
+              </div>
+              <Icon
+                className="mt-0.5 flex-shrink-0 text-default-400 transition-transform group-hover:translate-x-0.5"
+                icon="solar:arrow-right-linear"
+                width={16}
+              />
+            </div>
+          </ExternalLink>
+        ))}
+      </section>
 
-      <p className="mt-6 text-center text-[12px] text-default-400">
-        © {new Date().getFullYear()} 合社JSON · 基于 React、TypeScript 和
-        HeroUI 构建
-      </p>
+      <footer className="pt-1 text-[11.5px] leading-5 text-default-400">
+        <p>© {currentYear} 合社JSON · fork 自 fevrax/json-tools</p>
+      </footer>
     </div>
   );
 }

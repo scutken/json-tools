@@ -346,6 +346,7 @@ interface Message {
 // 定义组件ref的类型
 export interface PromptContainerRef {
   sendMessage: (content: string) => void;
+  stopGeneration: () => void;
 }
 
 interface PromptContainerProps {
@@ -358,6 +359,8 @@ interface PromptContainerProps {
   onApplyCode?: (code: string) => void;
   editorContent?: string; // 编辑器内容，用于AI分析
   useDirectApi?: boolean; // 是否直接使用API而不通过父组件的onSubmit
+  hideInput?: boolean; // 外部容器接管输入区时隐藏内置输入框
+  onLoadingChange?: (isLoading: boolean) => void;
   // 差异编辑器相关属性
   isDiffEditor?: boolean; // 是否是差异编辑器
   onApplyCodeToLeft?: (code: string) => void; // 应用到左侧编辑器
@@ -375,6 +378,8 @@ const PromptContainer = forwardRef<PromptContainerRef, PromptContainerProps>(
       onApplyCode,
       editorContent = "",
       useDirectApi = false,
+      hideInput = false,
+      onLoadingChange,
       isDiffEditor = false,
       onApplyCodeToLeft,
       onApplyCodeToRight,
@@ -394,6 +399,10 @@ const PromptContainer = forwardRef<PromptContainerRef, PromptContainerProps>(
 
     // AI控制器引用
     const aiControllerRef = useRef<AbortController | null>(null);
+
+    useEffect(() => {
+      onLoadingChange?.(isLoading);
+    }, [isLoading, onLoadingChange]);
 
     // 监听 initialMessages 变化，保持同步
     useEffect(() => {
@@ -572,9 +581,9 @@ const PromptContainer = forwardRef<PromptContainerRef, PromptContainerProps>(
         timestamp: Date.now(),
       };
 
-      // 如果使用自定义prompt，直接添加到消息中
+      setMessages((prevMessages) => [...prevMessages, userMessage]);
+
       if (!customPrompt) {
-        setMessages((prevMessages) => [...prevMessages, userMessage]);
         setPrompt("");
       }
 
@@ -631,6 +640,14 @@ const PromptContainer = forwardRef<PromptContainerRef, PromptContainerProps>(
     useImperativeHandle(ref, () => ({
       sendMessage: (content: string) => {
         handleSendMessage(content);
+      },
+      stopGeneration: () => {
+        if (aiControllerRef.current) {
+          aiControllerRef.current.abort();
+          aiControllerRef.current = null;
+        }
+        setIsLoading(false);
+        onStopGeneration?.();
       },
     }));
 
@@ -782,86 +799,88 @@ const PromptContainer = forwardRef<PromptContainerRef, PromptContainerProps>(
           </div>
         </div>
 
-        {/* 输入区域 - 使用自适应高度 */}
-        <div className="flex-none w-full flex flex-col gap-3 p-4 border-t border-default-200 bg-content1/80 backdrop-blur-sm">
-          <form
-            className="flex-none w-full flex flex-col items-start rounded-lg bg-default-50/50 transition-colors hover:bg-default-100/70 dark:bg-default-100/10 dark:hover:bg-default-100/20 shadow-sm"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendMessage();
-            }}
-          >
-            <PromptInput
-              classNames={{
-                base: "w-full",
-                inputWrapper: "!bg-transparent",
-                innerWrapper: "relative",
-                input:
-                  "pt-3 px-5 pb-12 text-medium max-h-[120px] focus:outline-none focus:ring-0 dark:bg-transparent border-none",
+        {!hideInput && (
+          /* 输入区域 - 使用自适应高度 */
+          <div className="flex-none w-full flex flex-col gap-3 p-4 border-t border-default-200 bg-content1/80 backdrop-blur-sm">
+            <form
+              className="flex-none w-full flex flex-col items-start rounded-lg bg-default-50/50 transition-colors hover:bg-default-100/70 dark:bg-default-100/10 dark:hover:bg-default-100/20 shadow-sm"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendMessage();
               }}
-              endContent={
-                <div className="absolute bottom-3 right-3 flex items-center gap-3">
-                  <p className="text-tiny text-default-400 opacity-80">
-                    {prompt.length}/{maxPromptLength}
-                  </p>
+            >
+              <PromptInput
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "!bg-transparent",
+                  innerWrapper: "relative",
+                  input:
+                    "pt-3 px-5 pb-12 text-medium max-h-[120px] focus:outline-none focus:ring-0 dark:bg-transparent border-none",
+                }}
+                endContent={
+                  <div className="absolute bottom-3 right-3 flex items-center gap-3">
+                    <p className="text-tiny text-default-400 opacity-80">
+                      {prompt.length}/{maxPromptLength}
+                    </p>
 
-                  <Button
-                    className={cn(
-                      "flex items-center gap-1 px-3",
-                      isLoading && "hover:bg-red-600",
-                    )}
-                    color={isLoading ? "danger" : "default"}
-                    isIconOnly={false}
-                    radius="full"
-                    size="sm"
-                    variant={isLoading ? "solid" : "solid"}
-                    onPress={handleButtonClick}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Spinner className="mr-2" color="white" size="sm" />
-                        <span>停止</span>
-                      </>
-                    ) : (
-                      <>
-                        <Icon
-                          className={cn(
-                            "transition-transform duration-300 [&>path]:stroke-[2px] text-default-600",
-                          )}
-                          icon="solar:arrow-up-linear"
-                          width={20}
-                        />
-                        <span>发送</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              }
-              minRows={2}
-              placeholder={placeholder}
-              value={prompt}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  // Cmd+Enter 或 Ctrl+Enter 换行
-                  if (e.metaKey || e.ctrlKey) {
-                    return;
-                  }
-
-                  if (e.shiftKey) {
-                    return;
-                  }
-
-                  // 普通回车发送消息
-                  if (!isLoading && prompt.trim()) {
-                    e.preventDefault(); // 阻止默认的换行行为
-                    handleSendMessage();
-                  }
+                    <Button
+                      className={cn(
+                        "flex items-center gap-1 px-3",
+                        isLoading && "hover:bg-red-600",
+                      )}
+                      color={isLoading ? "danger" : "default"}
+                      isIconOnly={false}
+                      radius="full"
+                      size="sm"
+                      variant={isLoading ? "solid" : "solid"}
+                      onPress={handleButtonClick}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Spinner className="mr-2" color="white" size="sm" />
+                          <span>停止</span>
+                        </>
+                      ) : (
+                        <>
+                          <Icon
+                            className={cn(
+                              "transition-transform duration-300 [&>path]:stroke-[2px] text-default-600",
+                            )}
+                            icon="solar:arrow-up-linear"
+                            width={20}
+                          />
+                          <span>发送</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 }
-              }}
-              onValueChange={setPrompt}
-            />
-          </form>
-        </div>
+                minRows={2}
+                placeholder={placeholder}
+                value={prompt}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    // Cmd+Enter 或 Ctrl+Enter 换行
+                    if (e.metaKey || e.ctrlKey) {
+                      return;
+                    }
+
+                    if (e.shiftKey) {
+                      return;
+                    }
+
+                    // 普通回车发送消息
+                    if (!isLoading && prompt.trim()) {
+                      e.preventDefault(); // 阻止默认的换行行为
+                      handleSendMessage();
+                    }
+                  }
+                }}
+                onValueChange={setPrompt}
+              />
+            </form>
+          </div>
+        )}
       </div>
     );
   },
