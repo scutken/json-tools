@@ -4,13 +4,11 @@ import { devtools, subscribeWithSelector } from "zustand/middleware";
 
 import { useSettingsStore } from "./useSettingsStore";
 
-import { StorageManager } from "@/lib/storage/StorageManager";
-import { getSyncManager } from "@/lib/storage/MultiWindowSyncManager";
+import { storage } from "@/lib/indexedDBStore";
 import {
   getHistoryContentHash,
   isHistoryContentTooLarge,
 } from "@/components/monacoEditor/editorPerformance";
-import { generateUUID } from "@/utils/uuid";
 
 /**
  * Tab 历史记录项
@@ -28,9 +26,6 @@ export interface TabHistoryItem {
 
 export type TabKind = "json";
 
-// 存储管理器实例 - 使用共享的 syncManager
-const syncManager = getSyncManager();
-const storageManager = new StorageManager(syncManager);
 
 export interface TabItem {
   kind: TabKind;
@@ -114,7 +109,7 @@ export const useTabStore = create<TabStore>()(
           set((state) => {
             const settings = useSettingsStore.getState();
             const newTabKey = `${state.nextKey}`;
-            const uuid = generateUUID();
+            const uuid = crypto.randomUUID();
             const newTab: TabItem = {
               kind: "json",
               key: `${state.nextKey}`,
@@ -149,7 +144,7 @@ export const useTabStore = create<TabStore>()(
             const defaultTab = {
               kind: "json" as const,
               key: "1",
-              uuid: generateUUID(),
+              uuid: crypto.randomUUID(),
               title: "New Tab 1",
               content: ``,
               closable: true,
@@ -253,9 +248,9 @@ export const useTabStore = create<TabStore>()(
             return;
           }
 
-          const tabs = await storageManager.get<PersistedTabItem[]>('tabs');
-          const activeTabKey = await storageManager.get<string>('tabs_active_key');
-          const nextKey = await storageManager.get<number>('tabs_next_key');
+          const tabs = await storage.getItem<PersistedTabItem[]>('tabs');
+          const activeTabKey = await storage.getItem<string>('tabs_active_key');
+          const nextKey = await storage.getItem<number>('tabs_next_key');
           const data: Record<string, any> = {};
 
           if (tabs) {
@@ -389,7 +384,7 @@ export const useTabStore = create<TabStore>()(
             const defaultTab = {
               kind: "json" as const,
               key: "1",
-              uuid: generateUUID(),
+              uuid: crypto.randomUUID(),
               title: "New Tab 1",
               content: "",
               closable: true,
@@ -535,9 +530,9 @@ export const useTabStore = create<TabStore>()(
         clearUserData: async () => {
           try {
             // 清除用户数据相关的存储键
-            await storageManager.remove(DB_TABS);
-            await storageManager.remove(DB_TAB_ACTIVE_KEY);
-            await storageManager.remove(DB_TAB_NEXT_KEY);
+            await storage.removeItem(DB_TABS);
+            await storage.removeItem(DB_TAB_ACTIVE_KEY);
+            await storage.removeItem(DB_TAB_NEXT_KEY);
 
             console.log('用户数据已清除');
           } catch (error) {
@@ -608,7 +603,7 @@ export const normalizePersistedTab = (tab: PersistedTabItem): TabItem | null => 
   return {
     kind: "json",
     key: tab.key,
-    uuid: typeof tab.uuid === "string" ? tab.uuid : generateUUID(),
+    uuid: typeof tab.uuid === "string" ? tab.uuid : crypto.randomUUID(),
     title: typeof tab.title === "string" ? tab.title : `New Tab ${tab.key}`,
     content: typeof tab.content === "string" ? tab.content : "",
     diffModifiedValue:
@@ -753,8 +748,6 @@ const recordTabHistory = (tab: TabItem) => {
 useTabStore.subscribe(
   (state) => state.tabs,
   (tabs) => {
-    // 如果是远程更新,不重复广播
-    if (isRemoteTabUpdate) return;
 
     // 检查是否启用了数据持久化
     const persistentDataEnabled = useSettingsStore.getState().persistentDataEnabled;
@@ -765,7 +758,7 @@ useTabStore.subscribe(
 
     clearTimeout(tabsSaveTimeout);
     tabsSaveTimeout = setTimeout(async () => {
-      await storageManager.set(DB_TABS, tabs);
+      await storage.setItem(DB_TABS, tabs);
       // storageManager 内部会自动广播,无需手动调用
     }, timeout);
   },
@@ -774,8 +767,6 @@ useTabStore.subscribe(
 useTabStore.subscribe(
   (state) => [state.activeTabKey, state.nextKey],
   (arr) => {
-    // 如果是远程更新,不重复广播
-    if (isRemoteTabUpdate) return;
 
     // 检查是否启用了数据持久化
     const persistentDataEnabled = useSettingsStore.getState().persistentDataEnabled;
@@ -786,100 +777,9 @@ useTabStore.subscribe(
 
     clearTimeout(tabActiveSaveTimeout);
     tabActiveSaveTimeout = setTimeout(async () => {
-      await storageManager.transaction([
-        { type: 'set', key: DB_TAB_ACTIVE_KEY, value: arr[0] },
-        { type: 'set', key: DB_TAB_NEXT_KEY, value: arr[1] },
-      ]);
-      // storageManager 内部会自动广播,无需手动调用
+      await storage.setItem(DB_TAB_ACTIVE_KEY, arr[0]);
+      await storage.setItem(DB_TAB_NEXT_KEY, arr[1]);
     }, timeout);
   },
 );
 
-// 多窗口同步：监听来自其他窗口的更新
-// 使用标志位防止循环触发
-let isRemoteTabUpdate = false;
-
-syncManager.onUpdate(DB_TABS, (data) => {
-  if (data && Array.isArray(data) && !isRemoteTabUpdate) {
-    isRemoteTabUpdate = true;
-
-    // 合并远程 tabs 时保留活动 tab 的本地内容
-    // 防止远程更新覆盖本地正在编辑的最新输入
-    const localState = useTabStore.getState();
-    const mergedTabs = normalizePersistedTabs(data).map((remoteTab: TabItem) => {
-      if (remoteTab.key === localState.activeTabKey) {
-        const localTab = localState.getTabByKey(remoteTab.key);
-        if (localTab) {
-          return {
-            ...remoteTab,
-            content: localTab.content,
-            monacoVersion: localTab.monacoVersion,
-          };
-        }
-      }
-      return remoteTab;
-    });
-
-    if (mergedTabs.length === 0) {
-      useTabStore.getState().initTab();
-
-      setTimeout(() => {
-        isRemoteTabUpdate = false;
-      }, 100);
-
-      return;
-    }
-
-    useTabStore.setState({ tabs: mergedTabs });
-
-    useTabStore.setState({
-      activeTabKey: repairActiveTabKey(mergedTabs, localState.activeTabKey),
-    });
-
-    // 持久化到本地存储
-    storageManager.set(DB_TABS, mergedTabs, { sync: false });
-
-    setTimeout(() => {
-      isRemoteTabUpdate = false;
-    }, 100);
-  }
-});
-
-syncManager.onUpdate('tabs_meta', (data) => {
-  if (data && data.activeTabKey && !isRemoteTabUpdate) {
-    isRemoteTabUpdate = true;
-
-    const currentTabs = useTabStore.getState().tabs;
-    const repairedActiveTabKey = repairActiveTabKey(currentTabs, data.activeTabKey);
-    const repairedNextKey = repairNextTabKey(currentTabs, data.nextKey);
-
-    useTabStore.setState({
-      activeTabKey: repairedActiveTabKey,
-      nextKey: repairedNextKey,
-    });
-
-    // 持久化到本地存储
-    storageManager.transaction([
-      { type: 'set', key: DB_TAB_ACTIVE_KEY, value: repairedActiveTabKey },
-      { type: 'set', key: DB_TAB_NEXT_KEY, value: repairedNextKey }
-    ], { sync: false });
-
-    setTimeout(() => {
-      isRemoteTabUpdate = false;
-    }, 100);
-  }
-});
-
-// 页面关闭前强制保存
-if (typeof window !== "undefined") {
-  window.addEventListener('beforeunload', async () => {
-    await storageManager.flush();
-  });
-
-  // 页面隐藏时也保存（移动端友好）
-  document.addEventListener('visibilitychange', async () => {
-    if (document.hidden) {
-      await storageManager.flush();
-    }
-  });
-}

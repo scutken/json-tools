@@ -2,9 +2,7 @@
 import { create } from "zustand";
 import { devtools, subscribeWithSelector } from "zustand/middleware";
 
-import { StorageManager } from "@/lib/storage/StorageManager";
-
-const storageManager = new StorageManager();
+import { storage } from "@/lib/indexedDBStore";
 
 // 定义聊天窗口样式类型
 export type ChatStyle = "bubble" | "document";
@@ -92,7 +90,7 @@ export const useSettingsStore = create<SettingsState>()(
         setSettings: (settings: Partial<SettingsState>) => set(settings),
         // 从存储同步设置数据
         syncSettingsStore: async () => {
-          const settings = await storageManager.get<SettingsState>(DB_SETTINGS);
+          const settings = await storage.getItem<SettingsState>(DB_SETTINGS);
 
           if (settings) {
             set(settings);
@@ -117,7 +115,7 @@ useSettingsStore.subscribe(
     settingsSaveTimeout = setTimeout(async () => {
       // 只保存数据字段，排除函数（actions）
       const { setMonacoEditorCDN, setChatStyle, setFontSize, setTimestampDecoderEnabled, setBase64DecoderEnabled, setUnicodeDecoderEnabled, setUrlDecoderEnabled, setDefaultIndentSize, setNewTabShortcut, setCloseTabShortcut, setPersistentDataEnabled, setSettings, syncSettingsStore, ...dataToSave } = settings;
-      await storageManager.set(DB_SETTINGS, dataToSave);
+      await storage.setItem(DB_SETTINGS, dataToSave);
     }, timeout);
   },
 );

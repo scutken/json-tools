@@ -1,20 +1,20 @@
 <div align="center">
-  <img src="public/logo.png" alt="合社JSON" width="160" />
+  <img src="https://cdn.jsdelivr.net/gh/scutken/json-tools@main/public/logo.png" alt="合社JSON" width="160" />
   <h1>合社JSON</h1>
   <p><strong>轻量、专注的现代化 JSON 编辑与校验工作台</strong></p>
-  
-  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![GitHub Stars](https://img.shields.io/github/stars/scutken/json-tools?style=social)](https://github.com/scutken/json-tools/stargazers) [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=white)](https://reactjs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/) [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/) [![Node](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-  
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![GitHub Stars](https://img.shields.io/github/stars/scutken/json-tools?style=social)](https://github.com/scutken/json-tools/stargazers) [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react\&logoColor=white)](https://reactjs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript\&logoColor=white)](https://www.typescriptlang.org/) [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite\&logoColor=white)](https://vitejs.dev/) [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-06B6D4?logo=tailwindcss\&logoColor=white)](https://tailwindcss.com/) [![Node](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js\&logoColor=white)](https://nodejs.org/)
+
 </div>
 
-> 本项目 fork 自 [fevrax/json-tools](https://github.com/fevrax/json-tools)，在原项目基础上做了大量样式与交互调整。
+> 本项目 fork 自 [fevrax/json-tools](https://github.com/fevrax/json-tools)，在原项目基础上做了大量功能、样式与交互调整。
 
 ## ✨ 特性
 
 合社JSON 是一个专注的 JSON 工作台，提供直观界面和高效编辑能力，帮助开发者处理、校验和查看 JSON 数据。
 
 - 🚀 **多视图模式**：支持文本视图、差异对比视图和表格视图
-- 🎨 **深色/浅色主题**：适应各种工作环境和个人偏好 
+- 🎨 **深色/浅色主题**：适应各种工作环境和个人偏好
 - 🔄 **视图切换**：快速在不同视图模式间切换
 - 🧩 **多标签页**：支持同时打开多个JSON文件处理
 - 🔍 **字符解码器**：自动识别并解码常见编码格式
@@ -38,31 +38,6 @@
 ### JSON 修复
 
 - **自动修复**：使用 jsonrepair 自动修复常见格式错误
-
-
-
-## 🐳 Docker 部署
-
-### 使用 Docker Compose（推荐）
-
-```bash
-# 构建并启动容器
-docker-compose up -d
-
-# 访问 http://localhost:3300
-```
-
-### 使用 Docker 命令
-
-```bash
-# 构建镜像
-docker build -t json-tools-next .
-
-# 运行容器
-docker run -d -p 3300:80 --name json-tools json-tools-next
-
-# 访问 http://localhost:3300
-```
 
 ## 🚀 快速开始
 
@@ -96,7 +71,6 @@ pnpm build
 ```bash
 pnpm preview
 ```
-
 
 ## 🤝 贡献
 
@@ -142,19 +116,17 @@ BREAKING CHANGE: 修改了之前的格式化行为
 ```
 
 提交符合规范的消息后，semantic-release 会：
+
 1. 根据提交类型自动确定版本号变更（major/minor/patch）
 2. 自动生成更新日志（CHANGELOG.md）
 3. 创建Git标签
 4. 发布GitHub Release
 
-
-## 📈 Stargazers over time
-[![Stargazers over time](https://starchart.cc/scutken/json-tools.svg?variant=adaptive)](https://starchart.cc/scutken/json-tools)
-
 ## 🙏 致谢
 
 感谢以下优秀项目的支持：
 
+- [fevrax/json-tools](https://github.com/fevrax/json-tools) - 本项目原仓库，提供了优秀的基础框架
 - [Cursor](https://www.cursor.com/) - 强大的AI代码编辑器
 - [uTools](https://u.tools/) - 高效的效率工具平台
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/) - 专业的代码编辑器组件
