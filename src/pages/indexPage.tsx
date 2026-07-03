@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@heroui/react";
 import { useTheme } from "next-themes";
+import { ThemeSwitch } from "@/components/button/ThemeSwitch";
 import { useNavigate } from "react-router-dom";
 
 import { useTabStore } from "@/store/useTabStore";
@@ -729,6 +730,7 @@ export default function IndexPage() {
             onUrlRefresh={urlRefreshHandle}
           />
         }
+        actions={<ThemeSwitch isCollapsed />}
       />
       <div className="flex-grow h-0 overflow-hidden flex flex-col">
         {activeTabItem?.kind === "json" && renderEditor()}
