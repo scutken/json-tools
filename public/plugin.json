@@ -7,7 +7,7 @@
   "features": [
     {
       "code": "json",
-      "explain": "合社JSON 工具箱",
+      "explain": "合社JSON 编辑器",
       "cmds": [
         "json",
         "合社JSON",

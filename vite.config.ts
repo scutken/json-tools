@@ -12,13 +12,6 @@ export default defineConfig({
   server: {
     host: "0.0.0.0", // 使用 '0.0.0.0' 允许从任何 IP 访问
   },
-  css: {
-    preprocessorOptions: {
-      scss: {
-        api: "modern-compiler", // or 'modern'
-      },
-    },
-  },
   base: "./",
   plugins: [
     react({
@@ -84,7 +77,7 @@ export default defineConfig({
       manifest: {
         name: "合社JSON - 多功能JSON处理助手",
         short_name: "合社JSON",
-        description: "强大的JSON工具集，支持格式化、验证、转换、编辑等多种功能",
+        description: "强大的JSON编辑器，支持格式化、验证、修复、编辑和查看",
         background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",
@@ -125,24 +118,7 @@ export default defineConfig({
             purpose: "maskable",
           },
         ],
-        shortcuts: [
-          {
-            name: "格式化 JSON",
-            short_name: "格式化",
-            description: "快速格式化 JSON 数据",
-            url: "/?tool=format",
-            icons: [
-              {
-                src: "pwa-96x96.png",
-                sizes: "96x96",
-              },
-            ],
-          },
-        ],
       },
     }),
   ],
-  optimizeDeps: {
-    include: ["vanilla-jsoneditor-cn"],
-  },
 });

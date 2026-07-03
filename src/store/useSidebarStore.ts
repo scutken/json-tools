@@ -6,6 +6,20 @@ import { devtools, subscribeWithSelector } from "zustand/middleware";
 import { storage } from "@/lib/indexedDBStore";
 import { SidebarKeys } from "@/components/sidebar/Items.tsx";
 
+const VALID_EDITOR_KEYS = new Set<SidebarKeys>([
+  SidebarKeys.textView,
+  SidebarKeys.diffView,
+  SidebarKeys.tableView,
+]);
+
+const normalizeEditorKey = (key?: string | null): SidebarKeys => {
+  if (key && VALID_EDITOR_KEYS.has(key as SidebarKeys)) {
+    return key as SidebarKeys;
+  }
+
+  return SidebarKeys.textView;
+};
+
 interface SidebarStore {
   activeKey: SidebarKeys;
   clickSwitchKey: SidebarKeys;
@@ -27,22 +41,31 @@ export const useSidebarStore = create<SidebarStore>()(
         activeKey: SidebarKeys.textView,
         clickSwitchKey: SidebarKeys.textView,
         historyRequestId: 0,
-        updateActiveKey: (key) => set({ activeKey: key }),
-        updateClickSwitchKey: (key) => set({ clickSwitchKey: key }),
+        updateActiveKey: (key) => set({ activeKey: normalizeEditorKey(key) }),
+        updateClickSwitchKey: (key) =>
+          set({ clickSwitchKey: normalizeEditorKey(key) }),
         requestHistoryModal: () =>
           set((state) => ({ historyRequestId: state.historyRequestId + 1 })),
         consumeHistoryModal: () => set({ historyRequestId: 0 }),
         switchActiveKey: () =>
-          set((state) => ({ activeKey: state.clickSwitchKey })),
+          set((state) => ({
+            activeKey: normalizeEditorKey(state.clickSwitchKey),
+          })),
         syncSidebarStore: async () => {
-          const activeKey = await storage.getItem(BD_SIDEBAR_ACTIVE_KEY);
+          const activeKey = (await storage.getItem(BD_SIDEBAR_ACTIVE_KEY)) as
+            | string
+            | null
+            | undefined;
           const data: Record<string, any> = {};
 
-          if (activeKey) {
-            data.activeKey = activeKey;
-            data.clickSwitchKey = activeKey;
-          }
+          const normalizedKey = normalizeEditorKey(activeKey);
+          data.activeKey = normalizedKey;
+          data.clickSwitchKey = normalizedKey;
           set(data);
+
+          if (activeKey !== normalizedKey) {
+            await storage.setItem(BD_SIDEBAR_ACTIVE_KEY, normalizedKey);
+          }
         },
       }),
       {
@@ -58,8 +81,10 @@ useSidebarStore.subscribe(
   (state) => state.activeKey,
   (activeKey) => {
     // 本地存储始终启用
-    storage.setItem(BD_SIDEBAR_ACTIVE_KEY, activeKey).catch((error) => {
-      console.error("保存侧边栏状态失败:", error);
-    });
+    storage
+      .setItem(BD_SIDEBAR_ACTIVE_KEY, normalizeEditorKey(activeKey))
+      .catch((error) => {
+        console.error("保存侧边栏状态失败:", error);
+      });
   },
 );

@@ -17,8 +17,6 @@ function App() {
       <Routes>
         <Route element={<IndexPage />} path="/" />
         <Route element={<SettingsPage />} path="/settings" />
-        <Route element={<IndexPage />} path="/toolbox" />
-        <Route element={<IndexPage />} path="/toolbox/:toolId" />
       </Routes>
     </Suspense>
   );

@@ -1,7 +1,7 @@
 <div align="center">
   <img src="public/logo.png" alt="合社JSON" width="160" />
   <h1>合社JSON</h1>
-  <p><strong>强大、灵活的JSON工具集，融合AI的现代化JSON数据处理解决方案</strong></p>
+  <p><strong>轻量、专注的现代化 JSON 编辑与校验工作台</strong></p>
   
   [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![GitHub Stars](https://img.shields.io/github/stars/scutken/json-tools?style=social)](https://github.com/scutken/json-tools/stargazers) [![React](https://img.shields.io/badge/React-19.0-61DAFB?logo=react&logoColor=white)](https://reactjs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/) [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/) [![Node](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
   
@@ -11,59 +11,19 @@
 
 ## ✨ 特性
 
-合社JSON 是一个多功能的JSON工具集，提供了直观的界面和多种强大功能，帮助开发者处理和转换JSON数据。
+合社JSON 是一个专注的 JSON 工作台，提供直观界面和高效编辑能力，帮助开发者处理、校验和查看 JSON 数据。
 
-- 🚀 **多视图模式**：支持文本视图、树形视图、差异对比视图和表格视图
+- 🚀 **多视图模式**：支持文本视图、差异对比视图和表格视图
 - 🎨 **深色/浅色主题**：适应各种工作环境和个人偏好 
 - 🔄 **视图切换**：快速在不同视图模式间切换
 - 🧩 **多标签页**：支持同时打开多个JSON文件处理
-- 🧩 **丰富工具箱**：集成多种专用JSON处理工具
 - 🔍 **字符解码器**：自动识别并解码常见编码格式
-- 🤖 **AI驱动功能**：利用AI技术增强JSON处理体验
-
-## 📦 JSON 工具箱 
-
-<div align="center">
-  <table>
-    <tr>
-      <td align="center">
-        <img src="https://api.iconify.design/fluent-emoji-flat:magic-wand.svg" width="24" />
-        <br />
-        <strong>JSON AI 修复</strong>
-        <br />
-        <small>AI智能修复JSON格式错误</small>
-      </td>
-      <td align="center">
-        <img src="https://api.iconify.design/fluent-color:code-block-24.svg" width="24" />
-        <br />
-        <strong>对象类型转换器</strong>
-        <br />
-        <small>JSON转TS/Go/Java/Rust等</small>
-      </td>
-      <td align="center">
-        <img src="https://api.iconify.design/token-branded:swap.svg" width="24" />
-        <br />
-        <strong>数据格式转换</strong>
-        <br />
-        <small>JSON/YAML/XML/TOML互转</small>
-      </td>
-      <td align="center">
-        <img src="https://api.iconify.design/icon-park-outline:key.svg" width="24" />
-        <br />
-        <strong>JWT解析验证</strong>
-        <br />
-        <small>解析JWT令牌与验证签名</small>
-      </td>
-    </tr>
-  </table>
-</div>
 
 ## 🔥 核心功能
 
 ### 多视图JSON编辑器
 
 - **文本视图**：基于Monaco Editor的专业代码编辑体验
-- **树形视图**：直观的树状结构展示，适合数据浏览
 - **差异对比视图**：方便对比JSON数据差异
 - **表格视图**：以表格形式展示JSON数据
 
@@ -75,10 +35,9 @@
 - **URL解码器**：识别并解码URL编码的字符串
 - **可配置性**：支持全局或按编辑器实例单独启用/禁用解码器
 
-### JSON AI 修复
+### JSON 修复
 
-- **自动修复**：使用jsonrepair库自动修复常见格式错误
-- **AI智能修复**：借助OpenAI API进行更复杂的JSON修复
+- **自动修复**：使用 jsonrepair 自动修复常见格式错误
 
 
 
@@ -199,7 +158,6 @@ BREAKING CHANGE: 修改了之前的格式化行为
 - [Cursor](https://www.cursor.com/) - 强大的AI代码编辑器
 - [uTools](https://u.tools/) - 高效的效率工具平台
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/) - 专业的代码编辑器组件
-- [svelte-jsoneditor](https://github.com/josdejong/svelte-jsoneditor/) - 多功能的代码编辑器组件
 
 ## 📜 许可证
 

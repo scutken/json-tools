@@ -13,6 +13,9 @@ dist-ssr
 *.local
 .superpowers/
 
+# Deepwork progress notes
+.slim/deepwork/
+
 # Superpowers 生成的工作笔记 / 规格文档（非项目源码）
 docs/
 

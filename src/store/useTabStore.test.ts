@@ -1,6 +1,10 @@
-import type { Tool } from "./useToolboxStore";
+import type { PersistedTabItem } from "./useTabStore";
 
-import { useTabStore } from "./useTabStore";
+import {
+  normalizePersistedTabs,
+  repairActiveTabKey,
+  repairNextTabKey,
+} from "./useTabStore";
 
 function assert(condition: boolean, message: string): void {
   if (!condition) {
@@ -8,40 +12,83 @@ function assert(condition: boolean, message: string): void {
   }
 }
 
-const sampleTool: Tool = {
-  id: "jsonAIRepair",
-  name: "JSON AI 修复",
-  icon: "fluent-emoji-flat:magic-wand",
-  description: "AI 智能识别并修复JSON格式错误，让您的JSON数据恢复正常",
-  path: "/toolbox/jsonAIRepair",
-  category: ["AI", "数据处理"],
-};
+const createTab = (key: string, kind?: string): PersistedTabItem => ({
+  kind,
+  key,
+  uuid: `uuid-${key}`,
+  title: `Tab ${key}`,
+  content: "{}",
+  monacoVersion: 1,
+  closable: true,
+  history: [],
+  editorSettings: {
+    fontSize: 14,
+    language: "json",
+    indentSize: 2,
+  },
+});
 
-useTabStore.getState().initTab();
+const createLegacyVanillaTab = (): PersistedTabItem => ({
+  ...createTab("5", "json"),
+  vanilla: { json: { removed: true } },
+  vanillaVersion: 3,
+  vanillaMode: "tree",
+  history: [
+    {
+      key: "history-1",
+      timestamp: 1,
+      title: "Legacy history",
+      content: "{}",
+      monacoVersion: 1,
+      vanilla: { json: { removed: true } },
+    },
+  ],
+});
 
-const toolboxTabKey = useTabStore.getState().openToolboxTab();
-const repeatedToolboxTabKey = useTabStore.getState().openToolboxTab();
+const mixedTabs = normalizePersistedTabs([
+  createTab("1", "json"),
+  createTab("2", "toolbox"),
+  createTab("3", "tool"),
+  createTab("4"),
+]);
 
+assert(mixedTabs.length === 2, "legacy toolbox/tool tabs should be removed");
+assert(mixedTabs.every((tab) => tab.kind === "json"), "remaining tabs should be json tabs");
+assert(mixedTabs[1].key === "4", "legacy tabs without kind should be treated as json");
 assert(
-  toolboxTabKey === repeatedToolboxTabKey,
-  "toolbox launcher should reuse a single tab",
+  repairActiveTabKey(mixedTabs, "2") === "1",
+  "active key pointing at a removed tab should fall back to first retained tab",
+);
+assert(
+  repairActiveTabKey(mixedTabs, "4") === "4",
+  "active key pointing at a retained tab should be preserved",
+);
+assert(
+  normalizePersistedTabs([createTab("2", "toolbox"), createTab("3", "tool")])
+    .length === 0,
+  "all removed legacy tabs should produce an empty migration result",
+);
+assert(
+  repairNextTabKey(mixedTabs, 2) === 5,
+  "next key should advance past the highest retained tab key",
+);
+assert(
+  repairNextTabKey(mixedTabs, 9) === 9,
+  "valid persisted next key above retained keys should be preserved",
 );
 
-const firstToolTabKey = useTabStore.getState().addToolTab(sampleTool);
-const secondToolTabKey = useTabStore.getState().addToolTab(sampleTool);
+const [legacyVanillaTab] = normalizePersistedTabs([createLegacyVanillaTab()]);
 
+assert(!("vanilla" in legacyVanillaTab), "legacy vanilla content should be removed");
 assert(
-  firstToolTabKey !== secondToolTabKey,
-  "tool clicks should create independent tool tabs",
-);
-
-const tabs = useTabStore.getState().tabs;
-
-assert(
-  tabs.some((tab) => tab.kind === "toolbox"),
-  "toolbox tab should be marked with toolbox kind",
+  !("vanillaVersion" in legacyVanillaTab),
+  "legacy vanilla version should be removed",
 );
 assert(
-  tabs.filter((tab) => tab.kind === "tool").length === 2,
-  "tool tabs should be marked with tool kind",
+  !("vanillaMode" in legacyVanillaTab),
+  "legacy vanilla mode should be removed",
+);
+assert(
+  legacyVanillaTab.history.every((historyItem) => !("vanilla" in historyItem)),
+  "legacy vanilla history snapshots should be removed",
 );

@@ -155,6 +155,28 @@ export const renderStandardButton = (button: BaseButtonConfig) => {
     button.className,
   );
 
+  if (!button.tooltip) {
+    return (
+      <Button
+        key={button.key}
+        aria-label={button.text}
+        className={baseButtonClassName}
+        size="sm"
+        startContent={
+          <Icon
+            className={button.iconColor || ""}
+            icon={button.icon}
+            width={15}
+          />
+        }
+        variant="light"
+        onPress={button.onClick}
+      >
+        {button.text}
+      </Button>
+    );
+  }
+
   return (
     <Tooltip key={button.key} content={button.tooltip} delay={300}>
       <Button
@@ -198,8 +220,8 @@ export const renderDropdownButton = (
       onOpenChange={setDropdownOpen}
     >
       <DropdownTrigger
-        onMouseEnter={showDropdown}
-        onMouseLeave={unShowDropdown}
+        onMouseEnter={showDropdown ? showDropdown : undefined}
+        onMouseLeave={unShowDropdown ? unShowDropdown : undefined}
       >
         <Button
           aria-label={button.tooltip || button.text}
@@ -253,7 +275,7 @@ export const renderMoreMenu = (
   setMoreDropdownOpen:
     | React.Dispatch<React.SetStateAction<boolean>>
     | undefined,
-  showMoreDropdown?: () => void,
+  _showMoreDropdown?: () => void,
   unShowMoreDropdown?: () => void,
   clearMoreDropdownTimeout?: () => void,
 ) => {
@@ -271,10 +293,7 @@ export const renderMoreMenu = (
       radius="sm"
       onOpenChange={setMoreDropdownOpen}
     >
-      <DropdownTrigger
-        onMouseEnter={showMoreDropdown}
-        onMouseLeave={unShowMoreDropdown}
-      >
+      <DropdownTrigger>
         <Button
           aria-label="More"
           className="workbench-focus-ring h-7 min-w-7 rounded-md px-1.5 text-xs text-default-600 hover:bg-default-100 hover:text-default-900"

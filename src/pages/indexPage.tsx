@@ -1,10 +1,9 @@
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@heroui/react";
 import { useTheme } from "next-themes";
-import { Content } from "vanilla-jsoneditor-cn";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-import { useTabStore, type TabItem } from "@/store/useTabStore";
+import { useTabStore } from "@/store/useTabStore";
 import DynamicTabs, {
   DynamicTabsRef,
 } from "@/components/dynamicTabs/DynamicTabs.tsx";
@@ -16,18 +15,10 @@ import MonacoJsonEditor, {
 import { useSidebarStore } from "@/store/useSidebarStore";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useMonacoInit } from "@/components/monacoEditor/useMonacoInit.ts";
-// eslint-disable-next-line import/order
-import VanillaJsonEditor, {
-  VanillaJsonEditorRef,
-} from "@/components/vanillaJsonEditor/VanillaJsonEditor.tsx";
-
-import "vanilla-jsoneditor-cn/themes/jse-theme-dark.css";
 import MonacoDiffEditor, {
   MonacoDiffEditorRef,
 } from "@/components/monacoEditor/MonacoDiffEditor.tsx";
-import MonacoDiffOperationBar, {
-  MonacoDiffOperationBarRef,
-} from "@/components/monacoEditor/operationBar/MonacoDiffOperationBar.tsx";
+import MonacoDiffOperationBar from "@/components/monacoEditor/operationBar/MonacoDiffOperationBar.tsx";
 import MonacoOperationBar from "@/components/monacoEditor/operationBar/MonacoOperationBar.tsx";
 import "@/styles/index.css";
 import { SidebarKeys } from "@/components/sidebar/Items.tsx";
@@ -39,27 +30,20 @@ import clipboard from "@/utils/clipboard";
 import toast from "@/utils/toast";
 import { stringifyJson } from "@/utils/json";
 import UtoolsListener from "@/services/utoolsListener";
-import ToolboxPage from "@/pages/toolboxPage";
-import { getToolComponent } from "@/pages/tools/toolRegistry";
-import { useToolboxStore } from "@/store/useToolboxStore";
 
 export default function IndexPage() {
   const { theme } = useTheme();
-  const location = useLocation();
   const navigate = useNavigate();
-  const tools = useToolboxStore((state) => state.tools);
   const monacoReady = useMonacoInit();
   const monacoJsonEditorRefs = useRef<Record<string, MonacoJsonEditorRef>>({});
   const monacoDiffEditorRefs = useRef<Record<string, MonacoDiffEditorRef>>({});
-  const vanillaJsonEditorRefs = useRef<Record<string, VanillaJsonEditorRef>>(
-    {},
-  );
   // 添加JsonTableView的引用
   const jsonTableViewRefs = useRef<Record<string, JsonTableViewRef>>({});
 
   // 历史记录弹窗状态
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isJsonQueryVisible, setJsonQueryVisible] = useState(false);
+  const [isValidationEnabled, setIsValidationEnabled] = useState(true);
 
   const {
     tabs,
@@ -69,28 +53,16 @@ export default function IndexPage() {
     setTabContent,
     setTabModifiedValue,
     syncTabStore,
-    setTabVanillaContent,
-    setTabVanillaMode,
-    vanilla2JsonContent,
-    setMonacoVersion,
-    setVanillaVersion,
-    jsonContent2VanillaContent,
     restoreTabHistory,
     deleteTabHistory,
     clearTabHistory,
-    openToolboxTab,
-    addToolTab,
   } = useTabStore();
 
   const sidebarStore = useSidebarStore();
   const tabRef = useRef<DynamicTabsRef>(null);
-  const monacoDiffOperationBarRef = useRef<MonacoDiffOperationBarRef>(null);
   const [isTabStoreReady, setIsTabStoreReady] = useState(false);
 
   const monacoUpdateContentTimeoutId = useRef<Record<string, NodeJS.Timeout>>(
-    {},
-  );
-  const vanillaUpdateContentTimeoutId = useRef<Record<string, NodeJS.Timeout>>(
     {},
   );
 
@@ -98,20 +70,17 @@ export default function IndexPage() {
   const [loadedEditors, setLoadedEditors] = useState<{
     monaco: Set<string>;
     diff: Set<string>;
-    vanilla: Set<string>;
-    table: Set<string>; // 将table从可选改为必需
+    table: Set<string>;
   }>({
     monaco: new Set(),
     diff: new Set(),
-    vanilla: new Set(),
-    table: new Set(), // 初始化table集合
+    table: new Set(),
   });
 
   // LRU 淘汰：跟踪每种编辑器类型的标签页访问顺序（最近访问在前）
   const lruOrder = useRef<Record<string, string[]>>({
     monaco: [],
     diff: [],
-    vanilla: [],
     table: [],
   });
 
@@ -145,8 +114,7 @@ export default function IndexPage() {
     keys.forEach((key) => {
       delete monacoJsonEditorRefs.current[key];
       delete monacoDiffEditorRefs.current[key];
-      delete vanillaJsonEditorRefs.current[key];
-      delete jsonTableViewRefs.current[key]; // 添加删除JsonTableView引用
+      delete jsonTableViewRefs.current[key];
 
       // 清理 LRU 记录
       for (const type of Object.keys(lruOrder.current)) {
@@ -161,8 +129,7 @@ export default function IndexPage() {
       ...prev,
       monaco: new Set([...prev.monaco].filter((key) => !keys.includes(key))),
       diff: new Set([...prev.diff].filter((key) => !keys.includes(key))),
-      vanilla: new Set([...prev.vanilla].filter((key) => !keys.includes(key))),
-      table: new Set([...prev.table].filter((key) => !keys.includes(key))), // 添加处理table集合
+      table: new Set([...prev.table].filter((key) => !keys.includes(key))),
     }));
   };
 
@@ -172,14 +139,6 @@ export default function IndexPage() {
     monacoUpdateContentTimeoutId.current[key] = setTimeout(() => {
       setTabContent(key, content);
     }, 0);
-  };
-
-  // VanillaJsonEditor 更新内容后同步
-  const vanillaEditorUpdateContent = (key: string, content: Content) => {
-    clearTimeout(vanillaUpdateContentTimeoutId.current[key]);
-    vanillaUpdateContentTimeoutId.current[key] = setTimeout(() => {
-      setTabVanillaContent(key, content);
-    }, 200);
   };
 
   const [editorLoading, setEditorLoading] = useState<{
@@ -238,8 +197,8 @@ export default function IndexPage() {
                     isMenu={false}
                     language={tab.editorSettings?.language || "json"}
                     minimap={true}
-                    showAi={true}
                     showJsonQueryFilter={isJsonQueryVisible}
+                    validationEnabled={isValidationEnabled}
                     tabKey={tab.key}
                     tabTitle={tab.title}
                     theme={theme === "dark" ? "vs-dark" : "vs-light"}
@@ -337,84 +296,11 @@ export default function IndexPage() {
     );
   };
 
-  // vanillaJsonEditor 渲染函数
-  const renderVanillaJsonEditor = () => {
-    return (
-      <div className="editor-container h-full">
-        {tabs
-          .filter((tab) => tab.kind === "json")
-          .map((tab) => {
-          const shouldRender = loadedEditors.vanilla.has(tab.key);
-          const isVisible = tab.key === activeTabKey;
-
-          if (!shouldRender && isVisible) {
-            const evicted = touchAndEvict("vanilla", tab.key);
-            const newVanillaSet = new Set([...loadedEditors.vanilla, tab.key]);
-            for (const evictedKey of evicted) {
-              newVanillaSet.delete(evictedKey);
-              delete vanillaJsonEditorRefs.current[evictedKey];
-            }
-            setLoadedEditors((prev) => ({
-              ...prev,
-              vanilla: newVanillaSet,
-            }));
-          } else if (shouldRender && isVisible) {
-            touchAndEvict("vanilla", tab.key);
-          }
-
-          return (
-            <div
-              key={"vanilla-" + tab.key}
-              className={cn(
-                "w-full h-full",
-                isVisible && "visible",
-                !editorLoading[tab.key] && "loaded",
-                {
-                  hidden: tab.key !== activeTabKey,
-                  "jse-theme-dark": theme === "dark",
-                },
-              )}
-            >
-              {shouldRender && (
-                <VanillaJsonEditor
-                  key={tab.key}
-                  ref={(ref) => {
-                    if (ref) {
-                      vanillaJsonEditorRefs.current[tab.key] = ref;
-                    }
-                  }}
-                  content={tab.vanilla}
-                  height="100%"
-                  mode={tab.vanillaMode}
-                  tabKey={tab.key}
-                  onChangeMode={(mode) => {
-                    setTabVanillaMode(tab.key, mode);
-                  }}
-                  onMount={() => {
-                    setEditorLoading((prev) => ({
-                      ...prev,
-                      [tab.key]: false,
-                    }));
-                  }}
-                  onUpdateValue={(content) => {
-                    vanillaEditorUpdateContent(tab.key, content);
-                  }}
-                />
-              )}
-            </div>
-          );
-          })}
-      </div>
-    );
-  };
-
   // 通过菜单栏的 activeKey 渲染编辑器
   const renderEditor = () => {
     switch (sidebarStore.activeKey) {
       case SidebarKeys.textView:
         return monacoReady ? renderMonacoJsonEditor() : null;
-      case SidebarKeys.treeView:
-        return renderVanillaJsonEditor();
       case SidebarKeys.diffView:
         return monacoReady ? renderMonacoDiffEditor() : null;
       case SidebarKeys.tableView:
@@ -432,70 +318,26 @@ export default function IndexPage() {
       return;
     }
 
-    // 如果当前 tab 存在 monaco 版本和 vanilla 版本不一致, 则需要同步数据
-    if (currentTab && currentTab.monacoVersion != currentTab.vanillaVersion) {
-      switch (sidebarStore.clickSwitchKey) {
-        case SidebarKeys.textView:
-          // 如果切换之前是 diff 视图着不需要处理
-          if (sidebarStore.activeKey == SidebarKeys.diffView) {
-            break;
-          }
-          // 如果vanillaVersion < monacoVersion 则需要不同步数据
-          if (currentTab.vanillaVersion < currentTab.monacoVersion) {
-            break;
-          }
-          vanilla2JsonContent(activeTabKey);
-          setMonacoVersion(activeTabKey, currentTab.vanillaVersion);
-          // 强制更新 monaco 编辑器内容
-          monacoJsonEditorRefs.current[currentTab.key]?.updateValue(
-            activeTab().content,
-          );
-          break;
-        case SidebarKeys.diffView:
-          // 如果切换之前是 text 视图着不需要处理
-          if (sidebarStore.activeKey == SidebarKeys.textView) {
-            break;
-          }
-          // 如果vanillaVersion < monacoVersion 则需要不同步数据
-          if (currentTab.vanillaVersion < currentTab.monacoVersion) {
-            break;
-          }
-          vanilla2JsonContent(activeTabKey);
-          setMonacoVersion(activeTabKey, currentTab.vanillaVersion);
-          monacoDiffEditorRefs.current[currentTab.key]?.updateOriginalValue(
-            activeTab().content,
-          );
-          break;
-        case SidebarKeys.treeView:
-          // 如果vanillaVersion < monacoVersion 则需要不同步数据
-          if (currentTab.monacoVersion < currentTab.vanillaVersion) {
-            break;
-          }
-          jsonContent2VanillaContent(activeTabKey);
-          setVanillaVersion(activeTabKey, currentTab.monacoVersion);
-          const tempTab = activeTab();
-
-          if (tempTab && tempTab.vanilla) {
-            vanillaJsonEditorRefs.current[
-              tempTab.key
-            ]?.updateEditorContentAndMode(tempTab.vanillaMode, tempTab.vanilla);
-          }
-          break;
-        case SidebarKeys.tableView:
-          // 如果切换到表格视图，确保使用最新的数据
-          if (sidebarStore.activeKey == SidebarKeys.treeView) {
-            // 如果从树形视图切换，先同步数据
-            if (currentTab.vanillaVersion > currentTab.monacoVersion) {
-              vanilla2JsonContent(activeTabKey);
-              setMonacoVersion(activeTabKey, currentTab.vanillaVersion);
-            }
-          }
-          break;
-      }
+    switch (sidebarStore.clickSwitchKey) {
+      case SidebarKeys.textView:
+        monacoJsonEditorRefs.current[currentTab.key]?.updateValue(
+          currentTab.content,
+        );
+        break;
+      case SidebarKeys.diffView:
+        monacoDiffEditorRefs.current[currentTab.key]?.updateOriginalValue(
+          currentTab.content,
+        );
+        break;
+      case SidebarKeys.tableView:
+        break;
     }
 
     // tab 切换时触发校验
-    if (sidebarStore.clickSwitchKey == SidebarKeys.textView) {
+    if (
+      sidebarStore.clickSwitchKey == SidebarKeys.textView &&
+      isValidationEnabled
+    ) {
       setTimeout(() => {
         monacoJsonEditorRefs.current[currentTab.key]?.validate();
       }, 500);
@@ -512,7 +354,6 @@ export default function IndexPage() {
 
     switch (sidebarStore.clickSwitchKey) {
       case SidebarKeys.textView:
-        setMonacoVersion(currentTab.key, currentTab.vanillaVersion);
         monacoJsonEditorRefs.current[currentTab.key]?.updateValue(
           activeTab().content,
         );
@@ -521,17 +362,6 @@ export default function IndexPage() {
         monacoDiffEditorRefs.current[currentTab.key]?.updateOriginalValue(
           activeTab().content,
         );
-        break;
-      case SidebarKeys.treeView:
-        jsonContent2VanillaContent(currentTab.key);
-        setVanillaVersion(currentTab.key, currentTab.monacoVersion);
-        const tempTab = activeTab();
-
-        if (tempTab && tempTab.vanilla) {
-          vanillaJsonEditorRefs.current[
-            tempTab.key
-          ]?.updateEditorContentAndMode(tempTab.vanillaMode, tempTab.vanilla);
-        }
         break;
       case SidebarKeys.tableView:
         break;
@@ -550,55 +380,6 @@ export default function IndexPage() {
 
     init();
   }, []);
-
-  useEffect(() => {
-    if (!isTabStoreReady) return;
-
-    const browserPath = window.location.pathname;
-    const routePath =
-      location.pathname === "/" && browserPath.startsWith("/toolbox")
-        ? browserPath
-        : location.pathname;
-    const normalizeWorkspaceUrl = () => {
-      if (browserPath.startsWith("/toolbox")) {
-        window.history.replaceState(null, "", `${window.location.origin}#/`);
-
-        return;
-      }
-
-      navigate("/", { replace: true });
-    };
-
-    if (routePath === "/toolbox") {
-      openToolboxTab();
-      normalizeWorkspaceUrl();
-
-      return;
-    }
-
-    const toolRouteMatch = routePath.match(/^\/toolbox\/([^/]+)$/);
-
-    if (!toolRouteMatch) return;
-
-    const toolId = decodeURIComponent(toolRouteMatch[1]);
-    const routeTool = tools.find((tool) => tool.id === toolId);
-
-    if (routeTool) {
-      addToolTab(routeTool);
-    } else {
-      openToolboxTab();
-      toast.warning("未找到对应工具", "已返回工具箱");
-    }
-
-    normalizeWorkspaceUrl();
-  }, [
-    addToolTab,
-    isTabStoreReady,
-    location.pathname,
-    navigate,
-    openToolboxTab,
-    tools,
-  ]);
 
   useEffect(() => {
     // 设置 UtoolsListener 的编辑器引用
@@ -647,16 +428,6 @@ export default function IndexPage() {
               monacoJsonEditorRefs.current[activeTabKey].layout();
               monacoJsonEditorRefs.current[activeTabKey].focus();
             }
-            break;
-          }
-          case SidebarKeys.treeView: {
-            const evicted = touchAndEvict("vanilla", tab.key);
-            const newSet = new Set([...loadedEditors.vanilla, tab.key]);
-            for (const evictedKey of evicted) {
-              newSet.delete(evictedKey);
-              delete vanillaJsonEditorRefs.current[evictedKey];
-            }
-            setLoadedEditors((prev) => ({ ...prev, vanilla: newSet }));
             break;
           }
           case SidebarKeys.diffView: {
@@ -741,13 +512,6 @@ export default function IndexPage() {
             updatedTab.content,
           );
           break;
-        case SidebarKeys.treeView:
-          if (updatedTab.vanilla) {
-            vanillaJsonEditorRefs.current[
-              currentTab.key
-            ]?.updateEditorContentAndMode(updatedTab.vanillaMode, updatedTab.vanilla);
-          }
-          break;
       }
     });
   };
@@ -775,9 +539,6 @@ export default function IndexPage() {
       case SidebarKeys.textView:
         return (
           <MonacoOperationBar
-            onAiClick={() => {
-              return monacoJsonEditorRefs.current[activeTabKey]?.showAiPrompt();
-            }}
             onClear={() => {
               return monacoJsonEditorRefs.current[activeTabKey]?.clear() ?? false;
             }}
@@ -803,17 +564,14 @@ export default function IndexPage() {
               return monacoJsonEditorRefs.current[activeTabKey]?.saveFile() ?? false;
             }}
             onShowHistory={handleShowHistory}
-            isFilterVisible={isJsonQueryVisible}
             onToggleFilter={() => setJsonQueryVisible((value) => !value)}
+            isValidationEnabled={isValidationEnabled}
+            onToggleValidation={setIsValidationEnabled}
           />
         );
       case SidebarKeys.diffView:
         return (
           <MonacoDiffOperationBar
-            ref={monacoDiffOperationBarRef}
-            onAiClick={() => {
-              monacoDiffEditorRefs.current[activeTabKey]?.showAiPrompt();
-            }}
             onClear={(type) => {
               return monacoDiffEditorRefs.current[activeTabKey]?.clear(type) ?? false;
             }}
@@ -958,48 +716,6 @@ export default function IndexPage() {
     );
   };
 
-  const renderToolTab = (tab: TabItem) => {
-    const toolId = String(tab.extraData?.toolId || "");
-    const ToolComponent = getToolComponent(toolId);
-
-    if (!ToolComponent) {
-      return (
-        <div className="flex h-full w-full items-center justify-center bg-default-50 text-default-500">
-          未找到工具：{toolId || tab.title}
-        </div>
-      );
-    }
-
-    return <ToolComponent />;
-  };
-
-  const renderWorkspaceTabs = () => {
-    return tabs
-      .filter((tab) => tab.kind === "toolbox" || tab.kind === "tool")
-      .map((tab) => {
-        const isVisible = tab.key === activeTabKey;
-
-        return (
-          <div
-            key={`workspace-${tab.key}`}
-            className={cn("h-full w-full", {
-              hidden: !isVisible,
-            })}
-          >
-            <Suspense
-              fallback={
-                <div className="flex h-full w-full items-center justify-center text-sm text-default-400">
-                  加载中...
-                </div>
-              }
-            >
-              {tab.kind === "toolbox" ? <ToolboxPage /> : renderToolTab(tab)}
-            </Suspense>
-          </div>
-        );
-      });
-  };
-
   const activeTabItem = getTabByKey(activeTabKey);
 
   return (
@@ -1016,7 +732,6 @@ export default function IndexPage() {
       />
       <div className="flex-grow h-0 overflow-hidden flex flex-col">
         {activeTabItem?.kind === "json" && renderEditor()}
-        {renderWorkspaceTabs()}
       </div>
       <WorkbenchBottomBar
         activeMode={sidebarStore.activeKey}

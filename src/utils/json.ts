@@ -33,27 +33,6 @@ export function parseJson(jsonString: string): any {
 }
 
 /**
- * 递归将对象树中的 LosslessNumber 实例转换为原生 number
- * Vanilla JSON Editor 内部使用原生 JSON，无法正确处理 LosslessNumber
- */
-export function convertLosslessToNative(value: unknown): unknown {
-  if (isLosslessNumber(value)) {
-    return value.valueOf();
-  }
-  if (Array.isArray(value)) {
-    return value.map(convertLosslessToNative);
-  }
-  if (value !== null && typeof value === "object") {
-    const result: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value)) {
-      result[k] = convertLosslessToNative(v);
-    }
-    return result;
-  }
-  return value;
-}
-
-/**
  * 使用 lossless-json 序列化对象为 JSON 字符串
  * @param value 要序列化的对象
  * @param space 缩进空格数
@@ -330,43 +309,6 @@ export function sortJson(data: any, order: "asc" | "desc" = "asc"): string {
   const sortedResult = sortValue(data);
 
   return stringifyJson(sortedResult, 4);
-}
-
-/**
- * 将驼峰/帕斯卡/短横线命名转为 snake_case
- */
-function toSnakeCase(str: string): string {
-  return str
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .replace(/([A-Z])([A-Z][a-z])/g, "$1_$2")
-    .replace(/[-\s]+/g, "_")
-    .toLowerCase();
-}
-
-/**
- * 递归转换 JSON 对象的所有键名为 snake_case
- */
-function convertKeysToSnakeCaseDeep<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return value.map(convertKeysToSnakeCaseDeep) as T;
-  }
-  if (value !== null && typeof value === "object" && !isLosslessNumber(value)) {
-    const result: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value)) {
-      result[toSnakeCase(k)] = convertKeysToSnakeCaseDeep(v);
-    }
-    return result as T;
-  }
-  return value;
-}
-
-/**
- * 将 JSON 文本中的所有字段名转换为 snake_case
- */
-export function convertKeysToSnakeCase(jsonString: string): string {
-  const parsed = parseJson(jsonString);
-  const converted = convertKeysToSnakeCaseDeep(parsed);
-  return stringifyJson(converted, 4);
 }
 
 /**

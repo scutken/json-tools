@@ -27,7 +27,6 @@ import {
   sortJson,
   parseJson,
   stringifyJson,
-  convertKeysToSnakeCase,
 } from "@/utils/json";
 import { updateFoldingDecorations } from "@/components/monacoEditor/decorations/foldingDecoration.ts";
 import {
@@ -40,6 +39,7 @@ import {
 import {
   ErrorDecoratorState,
   highlightErrorLine,
+  clearErrorHighlight,
 } from "@/components/monacoEditor/decorations/errorDecoration.ts";
 import {
   Base64DecoratorState,
@@ -79,11 +79,6 @@ import {
 import "@/styles/monaco.css";
 import ErrorModal from "@/components/monacoEditor/ErrorModal.tsx";
 import DraggableMenu from "@/components/monacoEditor/DraggableMenu.tsx";
-import AIAssistantSidebar, {
-  AIAssistantSidebarRef,
-  QuickPrompt,
-} from "@/components/ai/AIAssistantSidebar";
-import { jsonQuickPrompts } from "@/components/ai/JsonQuickPrompts.tsx";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import JsonQueryHelp from "@/components/monacoEditor/JsonQueryHelp";
 
@@ -97,10 +92,9 @@ export interface MonacoJsonEditorProps {
   minimap?: boolean;
   isSetting?: boolean; // 是否显示设置按钮
   isMenu?: boolean; // 是否显示悬浮菜单按钮
-  showAi?: boolean; // 是否显示AI功能
-  customQuickPrompts?: QuickPrompt[]; // 自定义快捷指令
   showTimestampDecorators?: boolean; // 是否显示时间戳装饰器
   showJsonQueryFilter?: boolean; // 是否显示 jsonQuery 过滤功能
+  validationEnabled?: boolean; // 是否开启 JSON 校验
   onUpdateValue: (value: string) => void;
   onMount?: () => void;
   ref?: React.Ref<MonacoJsonEditorRef>;
@@ -120,7 +114,6 @@ export interface MonacoJsonEditorRef {
   saveFile: () => boolean;
   updateValue: (value: string) => void;
   setLanguage: (language: string) => void;
-  showAiPrompt: () => void;
   toggleTimestampDecorators: (enabled?: boolean) => boolean; // 切换时间戳装饰器
   toggleBase64Decorators: (enabled?: boolean) => boolean; // 切换Base64装饰器
   toggleUnicodeDecorators: (enabled?: boolean) => boolean; // 切换Unicode装饰器
@@ -137,9 +130,9 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
   height,
   isMenu = false,
   minimap = false,
-  customQuickPrompts,
   showTimestampDecorators = true, // 默认开启时间戳装饰器
   showJsonQueryFilter = false, // s开启 jsonQuery 过滤功能
+  validationEnabled = true,
   onUpdateValue,
   onMount,
   ref,
@@ -162,9 +155,24 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
   const foldingDecorationsRef =
     useRef<monaco.editor.IEditorDecorationsCollection | null>(null);
   const cursorSelectionDisposableRef = useRef<monaco.IDisposable | null>(null);
+  const validationEnabledRef = useRef(validationEnabled);
 
   // Monaco 资源生命周期管理器，统一管理所有事件监听器和 timeout
   const disposableStore = useRef(new DisposableStore());
+
+  const clearParseJsonErrorState = useCallback(() => {
+    if (parseJsonErrorTimeoutRef.current) {
+      clearTimeout(parseJsonErrorTimeoutRef.current);
+      parseJsonErrorTimeoutRef.current = null;
+    }
+
+    parseJsonErrorShow.current = false;
+    setParseJsonError(null);
+    clearErrorHighlight({
+      editorRef,
+      decorationsRef: errorDecorationsRef,
+    });
+  }, []);
 
   // 本地编辑时间戳，用于防止外部更新覆盖正在输入的内容
   const lastLocalEditTimeRef = useRef(0);
@@ -294,24 +302,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     decorationsRef: errorDecorationsRef,
   };
 
-  // AI相关状态
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [showAiResponse, setShowAiResponse] = useState(false);
-
-  // 添加一个引用以便访问侧边栏内PromptContainer组件的方法
-  const assistantSidebarRef = useRef<AIAssistantSidebarRef>(null);
-
-  // 为PromptContainer组件准备消息数组
-  const [aiMessages, setAiMessages] = useState<
-    Array<{ role: "user" | "assistant"; content: string; timestamp: number }>
-  >([]);
-
-  // Ai 面板左右推拉相关状态
-  const [aiPanelWidth, setAiPanelWidth] = useState(0);
-  const [aiPanelIsDragging, setAIPaneIsDragging] = useState(false);
-  const aiPanelDragStartX = useRef<number>(0);
-  const aiPanelDragStartWidth = useRef<number>(0);
-
   // jsonQuery 过滤相关状态
   const [jsonQueryFilter, setJsonQueryFilter] = useState<string>("");
   const [showFilterEditor, setShowFilterEditor] = useState<boolean>(false);
@@ -335,8 +325,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     onClose: closeJsonErrorDetailsModel,
   } = useDisclosure();
 
-  // 当前编辑器内容状态（用于避免在渲染时访问ref）
-  const [currentEditorValue, setCurrentEditorValue] = useState<string>("");
   // 编辑器是否准备就绪
   const [isEditorReady, setIsEditorReady] = useState<boolean>(false);
   // 编辑器统计信息（字符数、行数、选区字符数）
@@ -345,9 +333,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     lines: number;
     selectedChars: number;
   }>({ chars: 0, lines: 0, selectedChars: 0 });
-
-  // 使用自定义快捷指令或默认快捷指令
-  const finalQuickPrompts = customQuickPrompts || jsonQuickPrompts;
 
   // 计算编辑器实际高度，当有错误时减去错误信息栏的高度
   const getEditorHeight = () => {
@@ -487,94 +472,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     latestFilterRef.current = jsonQueryFilter;
   }, [jsonQueryFilter]);
 
-  // 处理AI提交
-  const handleAiSubmit = async () => {
-    if (!aiPrompt.trim()) {
-      toast.error("请输入提示词");
-
-      return;
-    }
-
-    setShowAiResponse(true);
-
-    // 保存prompt内容用于稍后发送
-    const promptToSend = aiPrompt;
-
-    setAiPrompt("");
-
-    // 更新布局
-    setTimeout(() => {
-      editorRef.current?.layout();
-
-      // 使用setTimeout确保PromptContainer组件已经挂载并初始化
-      setTimeout(() => {
-        // 直接触发侧边栏内PromptContainer的sendMessage方法
-        if (assistantSidebarRef.current) {
-          assistantSidebarRef.current.sendMessage(promptToSend);
-        } else {
-          // 如果还没有获取到ref，添加一个思考中的消息
-          setAiMessages((prev) => [
-            ...prev,
-            {
-              role: "user",
-              content: promptToSend,
-              timestamp: Date.now(),
-            },
-            {
-              role: "assistant",
-              content: "思考中...",
-              timestamp: Date.now(),
-            },
-          ]);
-        }
-      }, 100);
-    }, 300);
-  };
-
-  // 关闭AI响应
-  const closeAiResponse = () => {
-    setShowAiResponse(false);
-    // 清空消息历史
-    setAiMessages([]);
-    setAiPrompt("");
-
-    // 布局调整
-    setTimeout(() => {
-      editorRef.current?.layout();
-    }, 100);
-  };
-
-  // 处理关闭按钮的函数
-  const handleCloseAiResponse = () => {
-    closeAiResponse();
-  };
-
-  // 添加应用代码到编辑器的函数
-  const handleApplyCode = (code: string) => {
-    if (!code || !editorRef.current) {
-      toast.error("无法应用代码到编辑器");
-
-      return;
-    }
-
-    try {
-      // 尝试解析JSON，确保是有效的JSON
-      const jsonObj = parseJson(code);
-
-      // 如果解析成功，格式化并设置到编辑器
-      setEditorValue(stringifyJson(jsonObj, indentSize));
-      toast.success("已应用代码到编辑器");
-    } catch {
-      // 如果解析失败，尝试直接设置文本
-      try {
-        setEditorValue(code);
-        toast.success("已应用代码到编辑器");
-      } catch {
-        toast.error("应用代码失败，格式可能不正确");
-      }
-    }
-  };
-
   // 错误信息内容监听
   useEffect(() => {
     // 需要显示错误信息时
@@ -591,6 +488,22 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
       parseJsonErrorShow.current = false;
     }
   }, [parseJsonError]);
+
+  useEffect(() => {
+    validationEnabledRef.current = validationEnabled;
+
+    if (!validationEnabled) {
+      clearParseJsonErrorState();
+
+      return;
+    }
+
+    const currentValue = editorRef.current?.getValue() || "";
+
+    if (currentValue.trim() !== "") {
+      editorValueValidate(currentValue);
+    }
+  }, [validationEnabled]);
 
   useEffect(() => {
     if (editorRef.current) {
@@ -616,7 +529,9 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
         detectIndentation: false, // 关闭自动检测缩进
       });
     }
-    editorFormat();
+    if (validationEnabledRef.current) {
+      editorFormat();
+    }
   }, [fontSize, indentSize]);
 
   // 语言变更处理函数
@@ -1022,9 +937,12 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
   }, [fontSize]);
 
   // 验证编辑器内容
-  const editorValueValidate = (val: string): boolean => {
+  const editorValueValidate = (
+    val: string,
+    showError: boolean = true,
+  ): boolean => {
     if (val.trim() === "") {
-      setParseJsonError(null);
+      clearParseJsonErrorState();
 
       return true;
     }
@@ -1041,11 +959,13 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     }
 
     if (jsonErr) {
-      setParseJsonError(jsonErr);
+      if (validationEnabledRef.current && showError) {
+        setParseJsonError(jsonErr);
+      }
 
       return false;
     } else {
-      setParseJsonError(null);
+      clearParseJsonErrorState();
     }
 
     return true;
@@ -1200,101 +1120,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     return "";
   };
 
-  // 开始拖动处理
-  const handleDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      aiPanelDragStartX.current = e.clientX;
-      aiPanelDragStartWidth.current = aiPanelWidth;
-      setAIPaneIsDragging(true);
-    },
-    [aiPanelWidth],
-  );
-
-  // 拖动AI面板
-  const handleMouseAIPanelMove = useCallback(
-    (e: MouseEvent) => {
-      if (!aiPanelIsDragging || !rootContainerRef.current) return;
-
-      // 使用requestAnimationFrame优化性能
-      requestAnimationFrame(() => {
-        if (!rootContainerRef.current) return;
-
-        const totalWidth = rootContainerRef.current.offsetWidth;
-
-        if (totalWidth <= 0) return; // 如果宽度无效则避免计算
-
-        const minPanelWidthPx = 200; // 两个面板的最小宽度（像素）
-
-        // 确保最小面板宽度不超过总宽度的一半（减去缓冲区）
-        const effectiveMinWidth = Math.min(
-          minPanelWidthPx,
-          totalWidth / 2 - 10,
-        );
-
-        // 基于有效最小宽度计算aiPanelWidth的边界
-        // 下限：确保AI面板至少为effectiveMinWidth
-        const lowerBound = effectiveMinWidth - 0.4 * totalWidth;
-        // 上限：确保编辑器面板至少为effectiveMinWidth
-        const upperBound = 0.6 * totalWidth - effectiveMinWidth;
-
-        // 根据拖动偏移量计算潜在的aiPanelWidth
-        const deltaX = e.clientX - aiPanelDragStartX.current;
-        // 向左拖动时aiPanelWidth增加（deltaX为负）
-        let potentialAiPanelWidth = aiPanelDragStartWidth.current - deltaX;
-
-        // 将潜在宽度限制在计算的边界内，确保lowerBound <= upperBound
-        if (lowerBound <= upperBound) {
-          const clampedAiPanelWidth = Math.max(
-            lowerBound,
-            Math.min(potentialAiPanelWidth, upperBound),
-          );
-
-          setAiPanelWidth(clampedAiPanelWidth);
-        } else {
-          // 处理边界无效的边缘情况（例如，totalWidth太小）
-          // 可选：设置为默认值或中间状态，或者不更新
-          console.warn("Invalid resize bounds", {
-            totalWidth,
-            lowerBound,
-            upperBound,
-          });
-        }
-
-        // 更新编辑器布局
-        editorRef.current?.layout();
-      });
-    },
-    [aiPanelIsDragging],
-  );
-
-  // 鼠标抬起处理
-  const handleMouseAIPanelUp = useCallback(() => {
-    setAIPaneIsDragging(false);
-  }, []);
-
-  // 添加/移除鼠标事件监听 - AI面板
-  useEffect(() => {
-    if (aiPanelIsDragging) {
-      document.addEventListener("mousemove", handleMouseAIPanelMove);
-      document.addEventListener("mouseup", handleMouseAIPanelUp);
-      document.body.style.userSelect = "none";
-      document.body.style.cursor = "ew-resize";
-    } else {
-      document.removeEventListener("mousemove", handleMouseAIPanelMove);
-      document.removeEventListener("mouseup", handleMouseAIPanelUp);
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    }
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseAIPanelMove);
-      document.removeEventListener("mouseup", handleMouseAIPanelUp);
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    };
-  }, [aiPanelIsDragging, handleMouseAIPanelMove, handleMouseAIPanelUp]);
-
   // 添加/移除鼠标事件监听 - jsonQuery 过滤器
   useEffect(() => {
     if (isFilterDragging) {
@@ -1332,31 +1157,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
         editorRef.current.layout();
       }
     },
-    showAiPrompt: () => {
-      const val = editorRef.current?.getValue() || "";
-
-      if (showAiResponse) {
-        closeAiResponse();
-
-        return false;
-      }
-
-      if (val.trim() === "") {
-        toast.error("编辑器内容为空，请先输入内容");
-
-        return false;
-      }
-
-      setCurrentEditorValue(val);
-      setAiPrompt("");
-      setAiMessages([]);
-      setShowAiResponse(true);
-      setTimeout(() => {
-        editorRef.current?.layout();
-      }, 0);
-
-      return true;
-    },
     copy: () => {
       if (!editorRef.current) {
         return false;
@@ -1390,7 +1190,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
       const compressed = stringifyJson(parseJson(val));
 
       setEditorValue(compressed);
-      toast.success("压缩成功");
 
       return true;
     },
@@ -1416,7 +1215,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
       const escaped = escapeJson(val);
 
       setEditorValue(escaped);
-      toast.success("转义成功");
 
       return true;
     },
@@ -1426,6 +1224,12 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
     validate: () => {
       if (!editorRef.current) {
         return false;
+      }
+
+      if (!validationEnabledRef.current) {
+        clearParseJsonErrorState();
+
+        return true;
       }
 
       const val = editorRef.current.getValue();
@@ -1506,10 +1310,9 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
           const errorMsg = formatModelByUnEscapeJson(val);
 
           if (errorMsg) {
-            toast.error(errorMsg);
-
             return false;
           }
+
           break;
         case "del_comment":
           setEditorValue(removeJsonComments(val));
@@ -1681,13 +1484,17 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
             const workload = getEditorWorkload(model);
 
             if (languageId === "json" || languageId === "json5") {
-              if (parseJsonErrorTimeoutRef.current) {
-                clearTimeout(parseJsonErrorTimeoutRef.current);
+              if (validationEnabledRef.current) {
+                if (parseJsonErrorTimeoutRef.current) {
+                  clearTimeout(parseJsonErrorTimeoutRef.current);
+                }
+                // 自动验证 JSON 内容
+                parseJsonErrorTimeoutRef.current = setTimeout(() => {
+                  editorValueValidate(val);
+                }, getValidationDelay(workload));
+              } else {
+                clearParseJsonErrorState();
               }
-              // 自动验证 JSON 内容
-              parseJsonErrorTimeoutRef.current = setTimeout(() => {
-                editorValueValidate(val);
-              }, getValidationDelay(workload));
 
               // 根据行数控制装饰器
               const lineCount = getEditorLineCount();
@@ -1705,7 +1512,6 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
             }
             lastLocalEditTimeRef.current = Date.now();
             onUpdateValue(val);
-            setCurrentEditorValue(val);
             updateEditorStats();
           }),
         );
@@ -1720,6 +1526,12 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
         // 添加粘贴事件监听：首次粘贴时自动格式化
         disposableStore.current.add(
           editor.onDidPaste(() => {
+            if (!validationEnabledRef.current) {
+              isFirstPasteRef.current = false;
+
+              return;
+            }
+
             if (isFirstPasteRef.current && editorRef.current) {
               const currentValue = editorRef.current.getValue();
 
@@ -1986,77 +1798,11 @@ const MonacoJsonEditor: React.FC<MonacoJsonEditorProps> = ({
       <div
         className={cn(
           "w-full h-full overflow-hidden",
-          showAiResponse || showFilterEditor ? "flex flex-row" : "",
+          showFilterEditor ? "flex flex-row" : "",
         )}
         style={{ height: getEditorHeight() }}
       >
-        {showAiResponse ? (
-          <>
-            {/* 左侧编辑器区域 */}
-            <div
-              className="h-full overflow-hidden border-r border-default-200 dark:border-default-100/20 monaco-editor-container"
-              style={{ width: `calc(60% - ${aiPanelWidth}px)` }}
-            >
-              <div className="relative h-full w-full">
-                <div ref={containerRef} className="h-full w-full" />
-                <div className="absolute bottom-0 right-2 pointer-events-none select-none z-10 text-[11px] leading-tight font-mono text-gray-400/70 dark:text-gray-500/70 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-sm rounded-t px-1.5 py-0.5">
-                  {editorStats.chars} 字符 · {editorStats.lines} 行
-                  {editorStats.selectedChars > 0 &&
-                    ` · ${editorStats.selectedChars} 选中`}
-                </div>
-              </div>
-            </div>
-
-            {/* 拖动条 */}
-            <div
-              className="w-2 h-full cursor-ew-resize bg-gradient-to-b from-blue-50/80 via-indigo-50/80 to-blue-50/80 dark:from-neutral-900/80 dark:via-neutral-800/80 dark:to-neutral-900/80 dark:border-neutral-800 backdrop-blur-sm flex items-center justify-center"
-              role="button"
-              style={{ touchAction: "none" }}
-              tabIndex={-1}
-              onMouseDown={handleDragStart}
-            >
-              <div className="h-24 w-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
-            </div>
-
-            {/* 右侧AI响应区域 */}
-            <div
-              className="h-full overflow-hidden flex flex-col bg-white/95 dark:bg-neutral-900/95 ai-panel"
-              style={{ width: `calc(40% + ${aiPanelWidth}px)` }}
-            >
-              <AIAssistantSidebar
-                ref={assistantSidebarRef}
-                editorContent={currentEditorValue}
-                isOpen={showAiResponse}
-                messages={aiMessages}
-                placeholderText="输入您的问题..."
-                prompt={aiPrompt}
-                quickPrompts={finalQuickPrompts}
-                onApplyCode={handleApplyCode}
-                onClose={handleCloseAiResponse}
-                onPromptChange={setAiPrompt}
-                onQuickPromptClick={(qp) => {
-                  if (qp.id === "convert_to_snake_case") {
-                    try {
-                      const editorValue = editorRef.current?.getValue() || "";
-                      const converted = convertKeysToSnakeCase(editorValue);
-
-                      editorRef.current?.setValue(converted);
-                      closeAiResponse();
-                      toast.success("已将所有字段名转换为 snake_case");
-                    } catch {
-                      toast.error("转换失败，请检查 JSON 格式是否正确");
-                    }
-
-                    return;
-                  }
-
-                  setAiPrompt(qp.prompt);
-                }}
-                onSubmit={handleAiSubmit}
-              />
-            </div>
-          </>
-        ) : showFilterEditor ? (
+        {showFilterEditor ? (
           <>
             {/* jsonQuery 过滤模式 - 双编辑器布局 */}
             <div
