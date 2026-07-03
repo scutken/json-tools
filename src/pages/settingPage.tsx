@@ -9,7 +9,6 @@ import {
 import { GeneralSettings } from "@/components/setting/sections/GeneralSettings";
 import { ShortcutsSettings } from "@/components/setting/sections/ShortcutsSettings";
 import { DecoderSettings } from "@/components/setting/sections/DecoderSettings";
-import { AISettings } from "@/components/setting/sections/AISettings";
 import { AboutContent } from "@/components/setting/sections/AboutContent";
 
 /**
@@ -23,7 +22,6 @@ const MENU_ITEMS: SettingsMenuItem[] = [
   { key: "general", label: "编辑器与数据", icon: "solar:settings-bold" },
   { key: "shortcuts", label: "快捷键", icon: "solar:keyboard-bold" },
   { key: "decoders", label: "自动解码", icon: "solar:code-bold" },
-  { key: "ai", label: "AI 助手", icon: "hugeicons:ai-chat-02" },
   { key: "about", label: "关于", icon: "solar:info-circle-bold" },
 ];
 
@@ -39,8 +37,6 @@ export default function SettingsPage() {
         return <ShortcutsSettings />;
       case "decoders":
         return <DecoderSettings />;
-      case "ai":
-        return <AISettings />;
       case "about":
         return <AboutContent />;
       default:

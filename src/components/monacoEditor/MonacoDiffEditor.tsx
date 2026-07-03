@@ -3,7 +3,6 @@ import React, {
   useImperativeHandle,
   useRef,
   useState,
-  useCallback,
 } from "react";
 import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
@@ -12,12 +11,8 @@ import { editor } from "monaco-editor";
 
 import toast from "@/utils/toast";
 import { MonacoDiffEditorEditorType } from "@/components/monacoEditor/monacoEntity";
-import { sortJson, parseJson, stringifyJson, convertKeysToSnakeCase } from "@/utils/json";
+import { sortJson, parseJson } from "@/utils/json";
 import { useTabStore } from "@/store/useTabStore";
-import AIAssistantSidebar, {
-  AIAssistantSidebarRef,
-  QuickPrompt,
-} from "@/components/ai/AIAssistantSidebar";
 import {
   TimestampDecoratorState,
   clearTimestampCache,
@@ -64,7 +59,6 @@ import {
 
 import "@/styles/monaco.css";
 import { Json5LanguageDef } from "@/components/monacoEditor/MonacoLanguageDef.tsx";
-import { diffJsonQuickPrompts } from "@/components/ai/JsonQuickPrompts.tsx";
 import { useSettingsStore } from "@/store/useSettingsStore";
 
 export interface MonacoDiffEditorProps {
@@ -75,7 +69,6 @@ export interface MonacoDiffEditorProps {
   modifiedValue: string;
   language?: string;
   theme?: string;
-  customQuickPrompts?: QuickPrompt[];
   showTimestampDecorators?: boolean;
   showBase64Decorators?: boolean;
   showUnicodeDecorators?: boolean;
@@ -84,7 +77,6 @@ export interface MonacoDiffEditorProps {
   onUpdateOriginalValue: (value: string) => void;
   onUpdateModifiedValue?: (value: string) => void;
   onMount?: () => void;
-
   ref?: React.Ref<MonacoDiffEditorRef>;
 }
 
@@ -98,7 +90,6 @@ export interface MonacoDiffEditorRef {
   focus: () => void;
   format: (type?: MonacoDiffEditorEditorType) => boolean;
   layout: () => void;
-  showAiPrompt: () => void;
   updateModifiedValue: (value: string) => void;
   updateOriginalValue: (value: string) => void;
   toggleTimestampDecorators: (enabled?: boolean) => boolean;
@@ -115,7 +106,6 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
   theme,
   height,
   tabKey,
-  customQuickPrompts,
   showTimestampDecorators = true,
   showBase64Decorators = true,
   showUnicodeDecorators = true,
@@ -155,22 +145,6 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
   const [currentLanguage] = useState(editorSettings.language);
   const [fontSize] = useState(editorSettings.fontSize);
   const [indentSize] = useState(editorSettings.indentSize || 4);
-
-  // AI相关状态
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [showAiResponse, setShowAiResponse] = useState(false);
-  const [aiMessages, setAiMessages] = useState<
-    Array<{ role: "user" | "assistant"; content: string; timestamp: number }>
-  >([]);
-
-  // 添加编辑器内容状态，用于传递给PromptContainer
-  const [editorContent, setEditorContent] = useState("");
-
-  const assistantSidebarRef = useRef<AIAssistantSidebarRef>(null);
-  const [aiPanelWidth, setAiPanelWidth] = useState(0);
-  const [aiPanelIsDragging, setAiPanelIsDragging] = useState(false);
-  const aiPanelDragStartX = useRef<number>(0);
-  const aiPanelDragStartWidth = useRef<number>(0);
 
   // 时间戳装饰器相关引用
   // 为原始编辑器和修改后编辑器分别创建装饰器状态
@@ -367,9 +341,6 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
     theme: theme == "vs-dark" ? "dark" : "light",
     editorPrefix: "modified",
   };
-
-  // 使用自定义快捷指令或默认快捷指令
-  const finalQuickPrompts = customQuickPrompts || diffJsonQuickPrompts;
 
   // 监听时间戳装饰器状态变化
   useEffect(() => {
@@ -741,91 +712,6 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
     }
   }, [currentLanguage]);
 
-  // 监听原始编辑器内容变化
-  useEffect(() => {
-    if (originalEditorRef.current && modifiedEditorRef.current) {
-      // 更新编辑器内容状态
-      const originalText = originalEditorRef.current.getValue() || "";
-      const modifiedText = modifiedEditorRef.current.getValue() || "";
-
-      setEditorContent(
-        `原始内容:\n${originalText}\n\n修改后内容:\n${modifiedText}`,
-      );
-    }
-  }, [originalValue, modifiedValue]);
-
-  // 窗口大小变化时仅刷新布局，右侧宽度由水平拖拽控制
-  useEffect(() => {
-    if (showAiResponse) {
-      editorRef.current?.layout();
-    }
-  }, [showAiResponse]);
-
-  const handleHorizontalMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!aiPanelIsDragging || !rootContainerRef.current) return;
-
-      requestAnimationFrame(() => {
-        if (!rootContainerRef.current) return;
-
-        const totalWidth = rootContainerRef.current.offsetWidth;
-
-        if (totalWidth <= 0) return;
-
-        const minPanelWidthPx = 240;
-        const effectiveMinWidth = Math.min(minPanelWidthPx, totalWidth / 2 - 10);
-        const lowerBound = effectiveMinWidth - 0.4 * totalWidth;
-        const upperBound = 0.6 * totalWidth - effectiveMinWidth;
-        const deltaX = e.clientX - aiPanelDragStartX.current;
-        const potentialAiPanelWidth = aiPanelDragStartWidth.current - deltaX;
-
-        if (lowerBound <= upperBound) {
-          setAiPanelWidth(
-            Math.max(lowerBound, Math.min(potentialAiPanelWidth, upperBound)),
-          );
-        }
-
-        editorRef.current?.layout();
-      });
-    },
-    [aiPanelIsDragging],
-  );
-
-  const handleHorizontalMouseUp = useCallback(() => {
-    setAiPanelIsDragging(false);
-  }, []);
-
-  const handleHorizontalDragStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      aiPanelDragStartX.current = e.clientX;
-      aiPanelDragStartWidth.current = aiPanelWidth;
-      setAiPanelIsDragging(true);
-    },
-    [aiPanelWidth],
-  );
-
-  useEffect(() => {
-    if (aiPanelIsDragging) {
-      document.addEventListener("mousemove", handleHorizontalMouseMove);
-      document.addEventListener("mouseup", handleHorizontalMouseUp);
-      document.body.style.userSelect = "none";
-      document.body.style.cursor = "ew-resize";
-    } else {
-      document.removeEventListener("mousemove", handleHorizontalMouseMove);
-      document.removeEventListener("mouseup", handleHorizontalMouseUp);
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    }
-
-    return () => {
-      document.removeEventListener("mousemove", handleHorizontalMouseMove);
-      document.removeEventListener("mouseup", handleHorizontalMouseUp);
-      document.body.style.userSelect = "";
-      document.body.style.cursor = "";
-    };
-  }, [aiPanelIsDragging, handleHorizontalMouseMove, handleHorizontalMouseUp]);
-
   const runInlineDecorationRefresh = (
     targetEditor: editor.IStandaloneCodeEditor | null,
     editorType: "original" | "modified",
@@ -992,15 +878,6 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
 
             onUpdateOriginalValue(originalText);
 
-            // 更新编辑器内容状态
-            if (modifiedEditorRef.current) {
-              const modifiedText = modifiedEditorRef.current.getValue() || "";
-
-              setEditorContent(
-                `原始内容:\n${originalText}\n\n修改后内容:\n${modifiedText}`,
-              );
-            }
-
             // 根据行数控制装饰器
             const lineCount = getEditorLineCount(originalEditorRef.current);
             const workload = getEditorWorkload(
@@ -1048,15 +925,6 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
             const modifiedText = modifiedEditorRef.current!.getValue();
 
             onUpdateModifiedValue && onUpdateModifiedValue(modifiedText);
-
-            // 更新编辑器内容状态
-            if (originalEditorRef.current) {
-              const originalText = originalEditorRef.current.getValue() || "";
-
-              setEditorContent(
-                `原始内容:\n${originalText}\n\n修改后内容:\n${modifiedText}`,
-              );
-            }
 
             // 根据行数控制装饰器
             const lineCount = getEditorLineCount(modifiedEditorRef.current);
@@ -1444,136 +1312,6 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
     }
   }, [urlDecoderEnabled]);
 
-  // 处理AI提交
-  const handleAiSubmit = async () => {
-    if (!aiPrompt.trim()) {
-      toast.error("请输入提示词");
-
-      return;
-    }
-
-    setShowAiResponse(true);
-
-    // 保存prompt内容用于稍后发送
-    const promptToSend = aiPrompt;
-
-    setAiPrompt("");
-
-    // 更新布局
-    setTimeout(() => {
-      editorRef.current?.layout();
-
-      // 在提交前再次更新编辑器内容
-      if (originalEditorRef.current && modifiedEditorRef.current) {
-        const originalText = originalEditorRef.current.getValue() || "";
-        const modifiedText = modifiedEditorRef.current.getValue() || "";
-
-        setEditorContent(
-          `原始内容:\n${originalText}\n\n修改后内容:\n${modifiedText}`,
-        );
-      }
-
-      // 使用setTimeout确保PromptContainer组件已经挂载并初始化
-      setTimeout(() => {
-        // 直接触发侧边栏内PromptContainer的sendMessage方法
-        if (assistantSidebarRef.current) {
-          assistantSidebarRef.current.sendMessage(promptToSend);
-        } else {
-          // 如果还没有获取到ref，添加一个思考中的消息
-          setAiMessages((prev) => [
-            ...prev,
-            {
-              role: "user",
-              content: promptToSend,
-              timestamp: Date.now(),
-            },
-            {
-              role: "assistant",
-              content: "思考中...",
-              timestamp: Date.now(),
-            },
-          ]);
-        }
-      }, 100);
-    }, 300);
-  };
-
-  // 关闭AI响应
-  const closeAiResponse = useCallback(() => {
-    setShowAiResponse(false);
-    // 清空消息历史
-    setAiMessages([]);
-    setAiPrompt("");
-
-    // 布局调整
-    setTimeout(() => {
-      editorRef.current?.layout();
-    }, 100);
-  }, []);
-
-  // 处理关闭按钮的函数
-  const handleCloseAiResponse = () => {
-    closeAiResponse();
-  };
-
-  // 添加应用代码到左侧编辑器的函数
-  const handleApplyCodeToLeft = (code: string) => {
-    if (!code || !originalEditorRef.current) {
-      toast.error("无法应用代码到左侧编辑器");
-
-      return;
-    }
-
-    try {
-      // 尝试解析JSON，确保是有效的JSON
-      const jsonObj = parseJson(code);
-
-      // 如果解析成功，格式化并设置到左侧编辑器
-      setEditorValue(
-        originalEditorRef.current,
-        stringifyJson(jsonObj, indentSize),
-      );
-      toast.success("已应用代码到左侧编辑器");
-    } catch {
-      // 如果解析失败，尝试直接设置文本
-      try {
-        setEditorValue(originalEditorRef.current, code);
-        toast.success("已应用代码到左侧编辑器");
-      } catch {
-        toast.error("应用代码失败，格式可能不正确");
-      }
-    }
-  };
-
-  // 添加应用代码到右侧编辑器的函数
-  const handleApplyCodeToRight = (code: string) => {
-    if (!code || !modifiedEditorRef.current) {
-      toast.error("无法应用代码到右侧编辑器");
-
-      return;
-    }
-
-    try {
-      // 尝试解析JSON，确保是有效的JSON
-      const jsonObj = parseJson(code);
-
-      // 如果解析成功，格式化并设置到右侧编辑器
-      setEditorValue(
-        modifiedEditorRef.current,
-        stringifyJson(jsonObj, indentSize),
-      );
-      toast.success("已应用代码到右侧编辑器");
-    } catch {
-      // 如果解析失败，尝试直接设置文本
-      try {
-        setEditorValue(modifiedEditorRef.current, code);
-        toast.success("已应用代码到右侧编辑器");
-      } catch {
-        toast.error("应用代码失败，格式可能不正确");
-      }
-    }
-  };
-
   const formatEditorAction = (
     editorRef: React.MutableRefObject<editor.IStandaloneCodeEditor | null>,
   ) => {
@@ -1816,34 +1554,6 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
         modifiedEditorRef.current?.layout();
       }
     },
-    showAiPrompt: () => {
-      const originalVal = originalEditorRef.current?.getValue() || "";
-      const modifiedVal = modifiedEditorRef.current?.getValue() || "";
-
-      if (showAiResponse) {
-        closeAiResponse();
-
-        return false;
-      }
-
-      if (originalVal.trim() === "" && modifiedVal.trim() === "") {
-        toast.error("编辑器内容为空，请先输入内容");
-
-        return false;
-      }
-
-      setEditorContent(
-        `原始内容:\n${originalVal}\n\n修改后内容:\n${modifiedVal}`,
-      );
-      setAiPrompt("");
-      setAiMessages([]);
-      setShowAiResponse(true);
-      setTimeout(() => {
-        editorRef.current?.layout();
-      }, 0);
-
-      return true;
-    },
     copy: (type) => {
       if (!editorRef.current) {
         return false;
@@ -2042,65 +1752,12 @@ const MonacoDiffEditor: React.FC<MonacoDiffEditorProps> = ({
 
   return (
     <div ref={rootContainerRef} className="flex flex-col w-full h-full relative" style={{ height }}>
-      <div className={cn("w-full h-full overflow-hidden", showAiResponse ? "flex flex-row" : "")}>
+      <div className={cn("w-full h-full overflow-hidden")}>
         <div
           ref={editorContainerRef}
           className="h-full overflow-hidden monaco-editor-container"
-          style={{ width: showAiResponse ? `calc(60% - ${aiPanelWidth}px)` : "100%" }}
+          style={{ width: "100%" }}
         />
-
-        {showAiResponse ? (
-          <>
-            <div
-              className="w-2 h-full cursor-ew-resize bg-gradient-to-b from-blue-50/80 via-indigo-50/80 to-blue-50/80 dark:from-neutral-900/80 dark:via-neutral-800/80 dark:to-neutral-900/80 dark:border-neutral-800 backdrop-blur-sm flex items-center justify-center"
-              role="button"
-              style={{ touchAction: "none" }}
-              tabIndex={-1}
-              onMouseDown={handleHorizontalDragStart}
-            >
-              <div className="h-24 w-1 rounded-full bg-gray-300 dark:bg-gray-600" />
-            </div>
-
-            <div style={{ width: `calc(40% + ${aiPanelWidth}px)` }} className="h-full overflow-hidden">
-              <AIAssistantSidebar
-                ref={assistantSidebarRef}
-                editorContent={editorContent}
-                isDiffEditor={true}
-                isOpen={showAiResponse}
-                messages={aiMessages}
-                placeholderText="向AI提问关于当前JSON比较的问题..."
-                prompt={aiPrompt}
-                quickPrompts={finalQuickPrompts}
-                onApplyCodeToLeft={handleApplyCodeToLeft}
-                onApplyCodeToRight={handleApplyCodeToRight}
-                onClose={handleCloseAiResponse}
-                onPromptChange={setAiPrompt}
-                onQuickPromptClick={(qp) => {
-                  if (qp.id === "convert_to_snake_case") {
-                    try {
-                      const originalText = originalEditorRef.current?.getValue() || "";
-                      const modifiedText = modifiedEditorRef.current?.getValue() || "";
-                      const convertedOriginal = convertKeysToSnakeCase(originalText);
-                      const convertedModified = convertKeysToSnakeCase(modifiedText);
-
-                      originalEditorRef.current?.setValue(convertedOriginal);
-                      modifiedEditorRef.current?.setValue(convertedModified);
-                      closeAiResponse();
-                      toast.success("已将所有字段名转换为 snake_case");
-                    } catch {
-                      toast.error("转换失败，请检查 JSON 格式是否正确");
-                    }
-
-                    return;
-                  }
-
-                  setAiPrompt(qp.prompt);
-                }}
-                onSubmit={handleAiSubmit}
-              />
-            </div>
-          </>
-        ) : null}
       </div>
     </div>
   );

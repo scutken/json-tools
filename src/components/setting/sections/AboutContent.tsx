@@ -15,15 +15,15 @@ const FEATURES = [
     tone: "from-primary/10 via-primary/5 to-background border-primary/20 text-primary",
   },
   {
-    label: "AI 修复",
+    label: "JSON 修复",
     icon: "solar:magic-stick-3-bold",
-    note: "自动补全 · 降低返工",
+    note: "常见错误 · 自动处理",
     tone: "from-success/10 via-success/5 to-background border-success/20 text-success",
   },
   {
-    label: "格式转换",
-    icon: "solar:shuffle-bold",
-    note: "类型互转 · 结构整理",
+    label: "差异与表格视图",
+    icon: "solar:table-2-bold",
+    note: "对比查看 · 结构浏览",
     tone: "from-warning/10 via-warning/5 to-background border-warning/20 text-warning",
   },
 ];
@@ -75,7 +75,7 @@ export function AboutContent() {
                 </span>
               </div>
               <p className="mt-1 max-w-2xl text-[13px] leading-5 text-default-500">
-                面向 JSON 校验、修复与转换的轻量工具页，保留专注的工作台手感。
+                面向 JSON 编辑、校验、修复与查看的轻量工作台。
               </p>
             </div>
           </div>

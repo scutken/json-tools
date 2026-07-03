@@ -21,7 +21,6 @@ interface MonacoDiffOperationBarProps {
     type: MonacoDiffEditorEditorType,
     sort: "asc" | "desc",
   ) => boolean;
-  onAiClick?: () => void;
   ref?: React.Ref<MonacoDiffOperationBarRef>;
 }
 
@@ -32,7 +31,6 @@ const MonacoDiffOperationBar: React.FC<MonacoDiffOperationBarProps> = ({
   onFormat,
   onClear,
   onFieldSort,
-  onAiClick,
 }) => {
   const [isCopyDropdownOpen, setCopyDropdownOpen] = useState(false);
   const [isFormatDropdownOpen, setFormatDropdownOpen] = useState(false);
@@ -123,22 +121,6 @@ const MonacoDiffOperationBar: React.FC<MonacoDiffOperationBarProps> = ({
 
   // 按钮组配置
   const actionGroups: BarButtonGroup[] = [
-    {
-      key: "main",
-      buttons: [
-        {
-          key: "ai",
-          icon: "hugeicons:ai-chat-02",
-          text: "AI助手",
-          tooltip: "打开AI助手",
-          onClick: onAiClick || (() => {}),
-          iconColor: "text-indigo-500",
-          className:
-            "text-xs text-default-600 px-2 rounded-xl bg-indigo-50/50 dark:bg-indigo-50/10 hover:bg-indigo-100/70",
-          priority: 10,
-        },
-      ],
-    },
     {
       key: "edit",
       buttons: [
@@ -359,19 +341,9 @@ const MonacoDiffOperationBar: React.FC<MonacoDiffOperationBarProps> = ({
       ref={containerRef}
       className="h-7 min-w-0 flex items-center justify-end gap-1"
     >
-      {/* 主要按钮组 */}
-      <div className="flex items-center gap-1">
-        {actionGroups[0].buttons.map(renderButton)}
-      </div>
-
-      {/* 分隔线 - 只在有主要按钮可见时显示 */}
-      {actionGroups[0].buttons.some((button) =>
-        visibleButtons.includes(button.key),
-      ) && <div className="h-5 w-px bg-default-200 mx-0.5" />}
-
       {/* 编辑按钮组 */}
       <div className="flex items-center gap-1">
-        {actionGroups[1].buttons.map(renderButton)}
+        {actionGroups[0].buttons.map(renderButton)}
 
         {/* 更多菜单 */}
         {renderMoreMenu(

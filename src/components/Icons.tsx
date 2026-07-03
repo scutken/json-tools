@@ -180,7 +180,7 @@ export const ApplyIcon: React.FC<IconSvgProps> = ({
   </svg>
 );
 
-// 从PromptContainer.tsx移动过来的图标 (menuDots)
+// 菜单更多操作图标
 export const MenuDotsIcon: React.FC<IconSvgProps> = ({
   size = 14,
   width,

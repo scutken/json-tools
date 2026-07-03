@@ -26,7 +26,6 @@ import toast from "@/utils/toast";
 import { useSettingsStore, type FontSize } from "@/store/useSettingsStore";
 import { useTabStore } from "@/store/useTabStore";
 import { storage } from "@/lib/indexedDBStore";
-import { useOpenAIConfigStore } from "@/store/useOpenAIConfigStore";
 
 const FONT_OPTIONS: Array<{
   value: FontSize;
@@ -102,7 +101,6 @@ export function GeneralSettings() {
       newTabShortcut: "Ctrl+Shift+T",
       closeTabShortcut: "Ctrl+Shift+W",
     });
-    useOpenAIConfigStore.getState().resetConfig();
     toast.success("所有设置已重置，请重新加载或刷新页面");
   };
 
